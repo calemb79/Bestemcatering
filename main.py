@@ -322,7 +322,6 @@ def export_orders_excel(admin_username: str):
             "Użytkownik": order["username"],
             "Miejsce": order.get("date_range", ""),
             "Tydzień": order["week"],
-            "Hala": order["date_range"],
             "Data zamówienia": order.get("timestamp", "").strftime("%Y-%m-%d %H:%M:%S") if order.get(
                 "timestamp") else "",
 
