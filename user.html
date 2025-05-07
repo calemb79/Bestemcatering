@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel użytkownika</title>
+  <script defer src="user.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --secondary: #3f37c9;
+      --accent: #4cc9f0;
+      --danger: #f72585;
+      --success: #4ad66d;
+      --warning: #f77f00;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --bg-gradient: linear-gradient(to bottom, #4361ee 0%, #3a0ca3 30%, #4cc9f0 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: var(--bg-gradient);
+      padding: 20px;
+      position: relative;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    #logo-header {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #system-logo {
+      max-width: 200px;
+      margin-top: 20px;
+    }
+
+    #content-wrapper {
+      width: 100%;
+      max-width: 600px;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    #login-section, #user-panel {
+      will-change: transform;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15),
+                  0 15px 20px rgba(0, 0, 0, 0.1),
+                  0 5px 5px rgba(0, 0, 0, 0.05),
+                  inset 0 -2px 5px rgba(0, 0, 0, 0.05),
+                  inset 0 2px 5px rgba(255, 255, 255, 0.8);
+      padding: 40px;
+      margin-top: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      transform-style: preserve-3d;
+      perspective: 1000px;
+      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+    }
+
+    #login-section:hover, #user-panel:hover {
+      transform: translateY(-5px) rotateX(2deg) rotateY(1deg);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2),
+                  0 25px 30px rgba(0, 0, 0, 0.15),
+                  0 10px 10px rgba(0, 0, 0, 0.1),
+                  inset 0 -3px 8px rgba(0, 0, 0, 0.1),
+                  inset 0 3px 8px rgba(255, 255, 255, 0.9);
+    }
+
+    .panel-header {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .logout-btn {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background-color: var(--danger);
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      width: auto;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .logout-btn:hover {
+      background-color: #d1145a;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 14px 20px;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      font-size: 16px;
+      margin-top: 12px;
+      background: white;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(76, 201, 240, 0.3);
+      transform: translateY(-2px);
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      margin-top: 20px;
+      letter-spacing: 0.5px;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background-color: var(--secondary);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .order-summary, .deduction-info {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .order-summary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .deduction-info {
+      background-color: var(--warning);
+      color: white;
+      display: none;
+      animation: pulse 2s infinite;
+    }
+
+	.order-preview {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.order-preview.visible {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 14px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    th, td {
+      padding: 12px 15px;
+      border: 1px solid #e9ecef;
+      text-align: center;
+    }
+
+    th {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+
+    h2, h3 {
+      text-align: center;
+      margin: 10px 0;
+      color: var(--dark);
+    }
+
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h3 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 25px 0 15px;
+      color: var(--secondary);
+    }
+
+    label {
+      font-weight: 500;
+      margin-top: 20px;
+      display: block;
+      color: var(--dark);
+    }
+
+    #order-history {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .copyright {
+      position: fixed;
+      bottom: 15px;
+      right: 15px;
+      color: white;
+      font-size: 12px;
+      opacity: 0.8;
+      z-index: 1000;
+    }
+
+    .floating {
+      animation: floating 3s ease-in-out infinite;
+    }
+
+    @keyframes floating {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide-in {
+      animation: slideIn 0.5s forwards;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(50px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--secondary);
+    }
+
+    /* Ripple effect */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple:after {
+      content: "";
+      display: block;
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+      background-repeat: no-repeat;
+      background-position: 50%;
+      transform: scale(10, 10);
+      opacity: 0;
+      transition: transform .5s, opacity 1s;
+    }
+
+    .ripple:active:after {
+      transform: scale(0, 0);
+      opacity: 0.3;
+      transition: 0s;
+    }
+
+    #login-section::before, #user-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%);
+      pointer-events: none;
+      z-index: -1;
+      transform: translateZ(-1px);
+      opacity: 0.8;
+    }
+
+    body {
+      animation: gradientShift 60s ease infinite;
+      background-size: 100% 300%;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 0%; }
+      50% { background-position: 0% 100%; }
+      100% { background-position: 0% 0%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="logo-header">
+    <img id="system-logo" src="images/logo.png" alt="Logo systemu cateringowego" />
+  </div>
+
+  <div id="content-wrapper">
+    <div id="login-section" class="fade-in">
+      <h2>Logowanie do systemu cateringowego</h2>
+      <input id="login" placeholder="Login - Numer RCP" class="slide-in" style="animation-delay: 0.1s" />
+      <input id="password" type="password" placeholder="Hasło - 4 ostatnie cyfry PESEL" class="slide-in" style="animation-delay: 0.2s" />
+      <button onclick="login()" class="ripple slide-in" style="animation-delay: 0.3s">Zaloguj</button>
+    </div>
+
+    <div id="user-panel" style="display:none;">
+      <div class="panel-header">
+        <h2>Witaj, <span id="user-id"></span> <small>(RCP nr: <span id="user-name"></span>)</small></h2>
+        <button class="logout-btn ripple" onclick="logout()" style="display:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+            <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+          </svg>
+          Wyloguj
+        </button>
+      </div>
+
+      <h3>Formularz zamówienia</h3>
+      <label for="order-week">Tydzień:</label>
+      <input type="week" id="order-week" required class="slide-in" />
+
+      <label for="delivery-location">Miejsce dostawy:</label>
+      <select id="delivery-location" required class="slide-in">
+        <option value="" disabled selected>Wybierz miejsce dostawy</option>
+        <option value="H7">H7</option>
+        <option value="H5">H5</option>
+        <option value="H4">H4</option>
+        <option value="H3">H3</option>
+        <option value="PMTM">PMTM</option>
+        <option value="BIURO">BIURO</option>
+      </select>
+
+<div class="order-preview" id="order-preview">Suma zamówienia: 0.00 zł</div>
+
+
+      <div id="menu-container"></div>
+      <button onclick="submitOrder()" class="ripple">Złóż zamówienie</button>
+
+      <div class="order-summary" id="order-summary">Suma zamówień: 0.00 zł</div>
+      <div class="deduction-info" id="deduction-info"></div>
+
+      <h3>Historia zamówień</h3>
+      <button id="toggle-history" onclick="toggleHistory()" class="ripple">Pokaż historię</button>
+      <div id="order-history"></div>
+    </div>
+  </div>
+
+  <div class="copyright">supported by aim4, all right reserved 04/2025r.</div>
+</body>
+</html>
