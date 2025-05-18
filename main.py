@@ -27,6 +27,7 @@ app = FastAPI()
 
 # CORS
 origins = [
+    "https://bestemcat.onrender.com",
     "https://bestemcatering.onrender.com",
     "https://cateringbestem.onrender.com",
     "https://catering-1.onrender.com",
