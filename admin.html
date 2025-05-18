@@ -17,7 +17,7 @@
       --light: #f8f9fa;
       --dark: #212529;
       --gray: #6c757d;
-      --bg-gradient: linear-gradient(135deg, #3a86ff 0%, #2667cc 100%);
+      --bg-gradient: linear-gradient(135deg, #074EFA 0%, #680670 100%);
     }
 
     * {
@@ -45,6 +45,37 @@
       animation: fadeIn 0.8s ease-out;
     }
 
+.orders-table tr td {
+  font-size: 12px; /* lub inny rozmiar według potrzeb */
+  padding: 8px 11px; /* zmniejszenie paddingu dla zwartości */
+}
+
+.orders-table th {
+  font-size: 12px; /* rozmiar nagłówków bez zmian */
+}
+
+.orders-table tr td:nth-child(7) { /* 7 to pozycja kolumny "Dania" */
+  min-width: 30px; /* lub inna szerokość według potrzeb */
+  max-width: 400px;
+  white-space: normal !important; /* zezwól na zawijanie tekstu */
+}
+
+.orders-table {
+  font-family: 'Inter', sans-serif;
+}
+
+.orders-table tr td {
+  vertical-align: top; /* wyrównanie zawartości do góry */
+  line-height: 1.4; /* lepsze odstępy między wierszami */
+}
+
+.orders-table tr td:nth-child(7) { /* kolumna z daniami */
+  word-break: break-word; /* zawijanie długich tekstów */
+}
+
+#menu-list table {
+  font-size: 13px !important;
+}
     section {
       margin-bottom: 30px;
       padding: 25px;
@@ -107,6 +138,10 @@
     .warning-btn {
       background-color: var(--warning);
     }
+
+    .accent-btn {
+       background-color: var(--accent);
+}
 
     table {
       border-collapse: collapse;
@@ -283,12 +318,13 @@
       <div class="form-group">
         <input type="password" id="admin-password" placeholder="Hasło" class="slide-in" style="animation-delay: 0.2s" />
       </div>
-      <button onclick="login()" class="ripple slide-in" style="animation-delay: 0.3s">Zaloguj</button>
+      <button id="login-button" class="ripple slide-in" style="animation-delay: 0.3s">Zaloguj</button>
     </section>
 
     <!-- Panel admina -->
     <section id="admin-panel" style="display: none;">
       <h2>Witaj w panelu administratora * <span id="admin-name"></span> * </h2>
+      <button onclick="logout()" class="ripple danger-btn" style="margin: 10;">Wyloguj</button>
 
       <!-- Zarządzanie użytkownikami -->
       <section class="animate__animated animate__fadeIn">
@@ -312,30 +348,104 @@
       </section>
 
       <section id="user-list-section" class="animate__animated animate__fadeIn">
-  <h3>Lista użytkowników</h3>
-  <button onclick="fetchUsers()" class="ripple">Pokaż użytkowników</button>
-  <div id="user-list"></div>
+  	<h3>Lista użytkowników</h3>
+  	<button onclick="fetchUsers()" class="ripple">Pokaż użytkowników</button>
+  	<div id="user-list"></div>
+	</section>
+
+<section id="messages" class="animate__animated animate__fadeIn" style="background: rgba(255, 255, 255, 0.95); border-radius: 16px; padding: 40px; margin-top: 30px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+  <h3 style="text-align: center; color: var(--secondary); margin-bottom: 25px; font-size: 22px;">Edytuj komunikat logowania</h3>
+  
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: stretch;">
+    <!-- Pole tekstowe do edycji -->
+    <div>
+      <strong style="display: block; margin-bottom: 10px;">Nowy komunikat:</strong>
+  <textarea id="messageText" 
+            style="width: 100%; padding: 15px; border: 2px solid #e9ecef; border-radius: 12px; font-family: 'Inter'; font-size: 16px; min-height: 150px; resize: none;"
+            placeholder="Wpisz nowy komunikat..."></textarea>
+    </div>
+    
+    <!-- Podgląd aktualnego komunikatu -->
+    <div>
+      <label style="display: block; margin-bottom: 10px; font-weight: 500; color: var(--dark);">
+        <strong>Aktualny komunikat:</strong>
+      </label>
+      <div id="currentMessage" 
+           style="padding: 15px; background: rgba(240, 240, 240, 0.7); border-radius: 12px; border: 2px solid #e9ecef; min-height: 150px; font-family: 'Inter';">
+        Ładowanie komunikatu...
+      </div>
+    </div>
+  </div>
+  
+  <!-- Przycisk zapisu -->
+  <button onclick="updateLoginMessage()" 
+          style="display: block; margin: 25px auto 0; padding: 15px 40px; background-color: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
+    Zapisz komunikat
+  </button>
+  
+  <!-- Komunikat o zapisie -->
+  <div id="saveMsg" style="margin-top: 20px; text-align: center; padding: 12px; border-radius: 8px;"></div>
 </section>
+
 
       <!-- Zarządzanie menu -->
       <section class="animate__animated animate__fadeIn">
-        <h3>Dodaj danie do menu</h3>
-        <div class="form-group">
-          <input type="text" id="dish-name" placeholder="Nazwa" />
-        </div>
-        <div class="form-group">
-          <input type="text" id="dish-description" placeholder="Opis" />
-        </div>
-        <div class="form-group">
-          <input type="number" id="dish-price" placeholder="Cena" step="0.01" />
-        </div>
-        <button onclick="addDish()" class="ripple success-btn">Dodaj danie</button>
-      </section>
+  <h3>Dodaj danie do menu</h3>
+  <div class="form-group">
+    <input type="text" id="dish-name" placeholder="Nazwa" />
+  </div>
+  <div class="form-group">
+    <input type="text" id="dish-description" placeholder="Opis" />
+  </div>
+  <div class="form-group">
+    <input type="number" id="dish-price" placeholder="Cena" step="1" />
+  </div>
+  <div class="form-group">
+    <select id="dish-day">
+      <option value="Poniedziałek">Poniedziałek</option>
+      <option value="Wtorek">Wtorek</option>
+      <option value="Środa">Środa</option>
+      <option value="Czwartek">Czwartek</option>
+      <option value="Piątek">Piątek</option>
+    </select>
+  </div>
+  <button onclick="addDish()" class="ripple success-btn">Dodaj danie</button>
+</section>
 
+<!-- W sekcji Aktualne menu -->
       <section class="animate__animated animate__fadeIn">
-        <h3>Aktualne menu</h3>
-        <div id="menu-list"></div>
-      </section>
+  <h3>Aktualne menu</h3>
+  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+    <button onclick="toggleMenu()" class="ripple">Pokaż/ukryj menu</button>
+    <button id="delete-selected-dishes" onclick="deleteSelectedDishes()" class="ripple danger-btn" style="display: none;">Usuń wybrane dania</button>
+  </div>
+  <div id="menu-list"></div>
+  
+  <!-- Sekcja edycji menu (początkowo ukryta) -->
+  <div id="edit-menu-section" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px;">
+    <h4>Edytuj danie</h4>
+    <div class="form-group">
+      <input type="text" id="edit-dish-name" placeholder="Nazwa" readonly>
+    </div>
+    <div class="form-group">
+      <input type="text" id="edit-dish-description" placeholder="Opis">
+    </div>
+    <div class="form-group">
+      <input type="number" id="edit-dish-price" placeholder="Cena" step="0.01">
+    </div>
+    <div class="form-group">
+      <select id="edit-dish-day">
+        <option value="Poniedziałek">Poniedziałek</option>
+        <option value="Wtorek">Wtorek</option>
+        <option value="Środa">Środa</option>
+        <option value="Czwartek">Czwartek</option>
+        <option value="Piątek">Piątek</option>
+      </select>
+    </div>
+    <button onclick="saveEditedDish()" class="ripple success-btn">Zapisz zmiany</button>
+    <button onclick="cancelEditMenu()" class="ripple danger-btn">Anuluj</button>
+  </div>
+</section>
 
      <!-- W sekcji Zamówienia -->
 	<section class="animate__animated animate__fadeIn">
@@ -354,9 +464,18 @@
     <button onclick="downloadExcel()" class="ripple warning-btn">Pobierz raport Excel</button>
     <button onclick="downloadPDF()" class="ripple success-btn">Pobierz raport PDF</button>
     <button onclick="downloadERP()" class="ripple">Pobierz raport ERP</button>
+    <button onclick="downloadDishesReport()" class="ripple accent-btn">Pobierz raport dań</button>
+    <button onclick="downloadWordMailMerge()" class="ripple accent-btn">Pobierz do Word (korespondencja)</button>
   </div>
 </section>
+ </div>
 
   <script src="admin.js"></script>
+  <script>
+    // Dodajemy event listener po załadowaniu DOM
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('login-button').addEventListener('click', login);
+    });
+  </script>
 </body>
 </html>

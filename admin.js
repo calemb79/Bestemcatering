@@ -3,6 +3,8 @@ let areOrdersVisible = false;
 let areUsersVisible = false;
 let selectedOrders = new Set();
 let sortDirection = 1;
+let isMenuVisible = false; // Dodaj tę zmienną na początku pliku, z innymi stanami
+let selectedDishes = new Set();
 
 // Helper functions for notifications
 function showNotification(message, type = 'success') {
@@ -86,6 +88,26 @@ function addUser() {
   const password = document.getElementById("new-password").value;
   const role = document.getElementById("new-role").value;
   const userCode = document.getElementById("new-user-code").value;
+  
+
+// Walidacja pól
+  if (!username) {
+    showNotification("Proszę podać numer RCP (username)", 'error');
+    document.getElementById("new-username").focus();
+    return;
+  }
+
+  if (!password) {
+    showNotification("Proszę podać hasło", 'error');
+    document.getElementById("new-password").focus();
+    return;
+  }
+
+  if (!userCode) {
+    showNotification("Proszę podać imię i nazwisko użytkownika", 'error');
+    document.getElementById("new-user-code").focus();
+    return;
+  }
 
   fetch("https://bestemcatering.onrender.com/admin/add_user", {
     method: "POST",
@@ -121,9 +143,8 @@ function addUser() {
 
 function fetchUsers() {
   const container = document.getElementById("user-list");
-  const refreshButton = document.querySelector('#user-list-section button'); // Dodaj id do sekcji w HTML
+  const refreshButton = document.querySelector('#user-list-section button');
   
-  // Jeśli użytkownicy są widoczni, ukryj ich
   if (areUsersVisible) {
     container.innerHTML = "";
     refreshButton.innerHTML = 'Pokaż użytkowników';
@@ -131,7 +152,6 @@ function fetchUsers() {
     return;
   }
 
-  // Pokaż loader podczas ładowania
   container.innerHTML = '<div class="loader-container"><span class="loader"></span> Ładowanie użytkowników...</div>';
   refreshButton.innerHTML = '<span class="loader"></span> Ładowanie...';
   refreshButton.disabled = true;
@@ -140,6 +160,21 @@ function fetchUsers() {
     .then(res => res.json())
     .then(users => {
       container.innerHTML = "";
+      
+      // Dodaj pole wyszukiwania
+      const searchContainer = document.createElement('div');
+      searchContainer.style.marginBottom = '10px';
+      searchContainer.style.display = 'flex';
+      searchContainer.style.gap = '10px';
+      
+      const searchInput = document.createElement('input');
+      searchInput.type = "text";
+      searchInput.placeholder = "Szukaj po kodzie lub nazwie...";
+      searchInput.style.flex = '1';
+      searchInput.oninput = () => filterUsersTable(searchInput.value.toLowerCase());
+      
+      searchContainer.appendChild(searchInput);
+      container.appendChild(searchContainer);
 
       // Sort button
       const sortButton = document.createElement("button");
@@ -160,7 +195,9 @@ function fetchUsers() {
 
       // Table with additional user_code column
       const userTable = document.createElement("table");
+      userTable.id = "users-table";
       userTable.classList.add('animate__animated', 'animate__fadeIn');
+      userTable.style.fontSize = "12px"; 
       
       const header = document.createElement("tr");
       header.innerHTML = "<th>Nazwa użytkownika</th><th>Kod</th><th>Rola</th><th>Akcje</th>";
@@ -195,6 +232,23 @@ function fetchUsers() {
     });
 }
 
+function filterUsersTable(searchTerm) {
+  const table = document.getElementById("users-table");
+  if (!table) return;
+
+  const rows = table.getElementsByTagName("tr");
+  for (let i = 1; i < rows.length; i++) { // Pomijamy nagłówek
+    const cells = rows[i].getElementsByTagName("td");
+    const username = cells[0].textContent.toLowerCase();
+    const userCode = cells[1].textContent.toLowerCase();
+    
+    if (username.includes(searchTerm) || userCode.includes(searchTerm)) {
+      rows[i].style.display = "";
+    } else {
+      rows[i].style.display = "none";
+    }
+  }
+}
 function changeRolePrompt(username) {
   const newRole = prompt("Nowa rola (user/admin):", "user");
   if (!newRole) return;
@@ -252,6 +306,8 @@ function addDish() {
   const name = document.getElementById("dish-name").value;
   const description = document.getElementById("dish-description").value;
   const price = parseFloat(document.getElementById("dish-price").value);
+  const day = document.getElementById("dish-day").value;
+  
 
   if (!name || !description || isNaN(price)) {
     showNotification("Uzupełnij wszystkie pola", 'error');
@@ -261,7 +317,13 @@ function addDish() {
   fetch("https://bestemcatering.onrender.com/menu", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description, price, username: loggedInUser })
+    body: JSON.stringify({ 
+      name, 
+      description, 
+      price, 
+      day,  // Dodane pole dnia
+      username: loggedInUser 
+    })
   })
     .then(res => res.json())
     .then(data => {
@@ -275,63 +337,128 @@ function addDish() {
     .catch(() => showNotification("Błąd dodawania dania", 'error'));
 }
 
+// === Menu Management ===
 function loadMenu() {
-  const container = document.getElementById("menu-list");
-  container.innerHTML = '<div class="loader-container"><span class="loader"></span> Ładowanie menu...</div>';
+  if (!isMenuVisible) {
+    toggleMenu();
+  } else {
+    const button = document.querySelector('#admin-panel > section:nth-child(5) button');
+    button.innerHTML = '<span class="loader"></span> Ładowanie...';
+    button.disabled = true;
+    
+    fetch("https://bestemcatering.onrender.com/menu/list")
+      .then(res => res.json())
+      .then(menu => {
+        const container = document.getElementById("menu-list");
+        container.innerHTML = "";
 
-  fetch("https://bestemcatering.onrender.com/menu/list")
-    .then(res => res.json())
-    .then(menu => {
-      container.innerHTML = "";
+        const table = document.createElement("table");
+        table.id = "menu-table";
+        table.style.fontSize = "10px"; // lub np. "0.85em"
 
-      const table = document.createElement("table");
-      table.classList.add('animate__animated', 'animate__fadeIn');
-      
-      const header = document.createElement("tr");
-      header.innerHTML = "<th>Nazwa</th><th>Opis</th><th>Cena</th><th>Akcje</th>";
-      table.appendChild(header);
+        const header = document.createElement("tr");
+        header.innerHTML = "<th>Dzień</th><th>Nazwa</th><th>Opis</th><th>Cena</th><th>Akcje</th>";
+        table.appendChild(header);
+	 
 
-      menu.forEach(item => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>${item.description}</td>
-          <td>${item.price.toFixed(2)} zł</td>
-          <td><button onclick="deleteDish('${item.name}')" class="ripple danger-btn">Usuń</button></td>
-        `;
-        table.appendChild(row);
+        menu.forEach(item => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${item.day || 'Brak dnia'}</td>
+            <td>${item.name}</td>
+            <td>${item.description}</td>
+            <td>${item.price.toFixed(2)} zł</td>
+            <td>
+              <button onclick="editDish('${item.name.replace(/'/g, "\\'")}', '${item.description.replace(/'/g, "\\'")}', ${item.price}, '${item.day}')" class="ripple">Edytuj</button>
+              <button onclick="deleteDish('${item.name.replace(/'/g, "\\'")}')" class="ripple danger-btn">Usuń</button>
+            </td>
+          `;
+          table.appendChild(row);
+        });
+
+        container.appendChild(table);
+        button.textContent = 'MENU';
+        button.disabled = false;
+      })
+      .catch(() => {
+        showNotification("Błąd ładowania menu", 'error');
+        const button = document.querySelector('#admin-panel > section:nth-child(5) button');
+        button.textContent = 'Pokaż/Ukryj menu';
+        button.disabled = false;
       });
-
-      container.appendChild(table);
-    })
-    .catch(() => showNotification("Błąd ładowania menu", 'error'));
+  }
+}
+function editDish(name, description, price, day) {
+  // Escape single quotes in name to prevent JS errors
+  const escapedName = name.replace(/'/g, "\\'");
+  
+  // Wypełnij formularz edycji danymi dania
+  document.getElementById("edit-dish-name").value = escapedName;
+  document.getElementById("edit-dish-description").value = description;
+  document.getElementById("edit-dish-price").value = price;
+  document.getElementById("edit-dish-day").value = day;
+  
+  // Pokaż sekcję edycji
+  document.getElementById("edit-menu-section").style.display = "block";
+  
+  // Przewiń do sekcji edycji
+  document.getElementById("edit-menu-section").scrollIntoView({ behavior: 'smooth' });
 }
 
-function deleteDish(name) {
-  if (!confirm(`Czy na pewno chcesz usunąć "${name}"?`)) return;
+function cancelEditMenu() {
+  // Wyczyść formularz i ukryj sekcję edycji
+  document.getElementById("edit-dish-name").value = "";
+  document.getElementById("edit-dish-description").value = "";
+  document.getElementById("edit-dish-price").value = "";
+  document.getElementById("edit-dish-day").value = "Poniedziałek";
+  document.getElementById("edit-menu-section").style.display = "none";
+}
 
-  fetch("https://bestemcatering.onrender.com/menu/delete", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, username: loggedInUser })
-  })
-    .then(res => res.json())
-    .then(data => {
-      showNotification(data.msg, 'success');
-      loadMenu();
-    })
-    .catch(() => showNotification("Błąd usuwania dania", 'error'));
+async function saveEditedDish() {
+  const originalName = document.getElementById("edit-dish-name").value;
+  const newDescription = document.getElementById("edit-dish-description").value;
+  const newPrice = parseFloat(document.getElementById("edit-dish-price").value);
+  const newDay = document.getElementById("edit-dish-day").value;
+
+  if (!originalName || !newDescription || isNaN(newPrice)) {
+    showNotification("Wypełnij wszystkie pola", 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch("https://bestemcatering.onrender.com/menu/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        original_name: originalName,
+        new_description: newDescription,
+        new_price: newPrice,
+        new_day: newDay,
+        username: loggedInUser
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("Błąd podczas aktualizacji dania");
+    }
+
+    const data = await response.json();
+    showNotification(data.msg || "Danie zostało zaktualizowane", 'success');
+    cancelEditMenu();
+    loadMenu();
+  } catch (error) {
+    console.error("Błąd:", error);
+    showNotification(error.message, 'error');
+  }
 }
 
 // === Excel export ===
+  
 function fetchOrders() {
   const loadButton = document.getElementById("load-orders-button");
   const deleteSelectedBtn = document.getElementById("delete-selected-orders");
   const container = document.getElementById("order-list");
   
-  loadButton.innerHTML = '<span class="loader"></span> Ładowanie...';
-  loadButton.disabled = true;
-
   loadButton.innerHTML = '<span class="loader"></span> Ładowanie...';
   loadButton.disabled = true;
   deleteSelectedBtn.style.display = 'none';
@@ -372,19 +499,38 @@ function fetchOrders() {
             userCodeMap[user.username] = user.user_code || 'Brak kodu';
           });
 
+          // Dodaj pole wyszukiwania
+          const searchContainer = document.createElement('div');
+          searchContainer.style.marginBottom = '10px';
+          searchContainer.style.display = 'flex';
+          searchContainer.style.gap = '10px';
+          
+          const searchInput = document.createElement('input');
+          searchInput.type = "text";
+          searchInput.placeholder = "Szukaj po kodzie lub nazwie użytkownika...";
+          searchInput.style.flex = '1';
+          searchInput.oninput = () => filterOrdersTable(searchInput.value.toLowerCase(), userCodeMap);
+          
+          searchContainer.appendChild(searchInput);
+          container.appendChild(searchContainer);
+
           const table = document.createElement("table");
           table.className = "orders-table";
+          table.id = "orders-table";
+          table.style.width = "100%";
+          table.style.tableLayout = "fixed"; // Ważne dla stałych szerokości kolumn
           
-          // Nagłówki tabeli
+          // Nagłówki tabeli Z POPRAWIONYMI SZEROKOŚCIAMI
           const header = document.createElement("tr");
           header.innerHTML = `
-            <th style="width: 30px;"><input type="checkbox" id="select-all-orders" onclick="toggleAllOrders(this)"></th>
-            <th>Kod użytkownika</th>
-            <th>Użytkownik</th>
-            <th>Tydzień</th>
-	    <th>Miejsce</th>
-            <th>Dania</th>
-            <th>Akcje</th>
+            <th style="width: 40px;"><input type="checkbox" id="select-all-orders" onclick="toggleAllOrders(this)"></th>
+            <th style="width: 80px;">Kod użytk.</th>
+            <th style="width: 40px;">RCP</th>
+            <th style="width: 60px;">Tydzień</th>
+            <th style="width: 70px;">Miejsce</th>
+            <th style="width: 60px;">Zmiana</th>
+            <th style="width: 350px;">Dania</th>
+            <th style="width: 80px;">Akcje</th>
           `;
           table.appendChild(header);
 
@@ -392,6 +538,7 @@ function fetchOrders() {
           orders.forEach(order => {
             const row = document.createElement("tr");
             const orderId = order._id;
+            const userCode = userCodeMap[order.username] || 'Brak kodu';
             
             // Formatowanie dań
             const meals = order.meals?.map(m => 
@@ -406,22 +553,30 @@ function fetchOrders() {
             // Przycisk usuwania
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Usuń";
-            deleteBtn.className = "delete-btn";
-            deleteBtn.onclick = () => deleteOrder(orderId);
+            deleteBtn.className = "ripple danger-btn";
+            deleteBtn.onclick = (e) => {
+              e.stopPropagation();
+              deleteOrder(orderId);
+            };
 
             row.innerHTML = `
               <td></td>
-              <td>${userCodeMap[order.username] || 'Brak kodu'}</td>
+              <td>${userCode}</td>
               <td>${order.username}</td>
               <td>${order.week}</td>
-	      <td>${order.date_range || 'Brak danych'}</td>
+              <td>${order.date_range || 'Brak danych'}</td>
+              <td>${order.shift || 'Brak danych'}</td>
               <td>${meals}</td>
               <td></td>
             `;
             
+            // Dodaj atrybuty data-* dla wyszukiwania
+            row.setAttribute('data-user-code', userCode.toLowerCase());
+            row.setAttribute('data-username', order.username.toLowerCase());
+            
             // Wstaw checkbox i przycisk
             row.cells[0].appendChild(checkbox);
-            const actionCell = row.cells[5];
+            const actionCell = row.cells[7];
             actionCell.appendChild(deleteBtn);
             
             table.appendChild(row);
@@ -440,6 +595,21 @@ function fetchOrders() {
       loadButton.innerHTML = 'Załaduj zamówienia';
       loadButton.disabled = false;
     });
+}function filterOrdersTable(searchTerm, userCodeMap) {
+  const table = document.getElementById("orders-table");
+  if (!table) return;
+
+  const rows = table.getElementsByTagName("tr");
+  for (let i = 1; i < rows.length; i++) { // Pomijamy nagłówek
+    const userCode = rows[i].getAttribute('data-user-code') || '';
+    const username = rows[i].getAttribute('data-username') || '';
+    
+    if (userCode.includes(searchTerm) || username.includes(searchTerm)) {
+      rows[i].style.display = "";
+    } else {
+      rows[i].style.display = "none";
+    }
+  }
 }
 
 async function deleteOrder(orderId) {
@@ -564,6 +734,180 @@ function toggleOrderSelection(event, orderId) {
     selectAll.checked = false;
   }
 }
+
+
+// === Menu Management ===
+function toggleMenu() {
+  const button = document.querySelector('#admin-panel > section:nth-child(5) button');
+  const container = document.getElementById("menu-list");
+  const deleteSelectedBtn = document.getElementById("delete-selected-dishes");
+  
+  if (isMenuVisible) {
+    container.innerHTML = "";
+    button.textContent = 'Zapisz kominikat*';
+    isMenuVisible = false;
+    selectedDishes.clear();
+    deleteSelectedBtn.style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = '<div class="loader-container"><span class="loader"></span> Ładowanie menu...</div>';
+  button.innerHTML = '<span class="loader"></span> Ładowanie...';
+  button.disabled = true;
+
+  fetch("https://bestemcatering.onrender.com/menu/list")
+    .then(res => res.json())
+    .then(menu => {
+      container.innerHTML = "";
+
+      const table = document.createElement("table");
+      table.classList.add('animate__animated', 'animate__fadeIn');
+      
+      // Zmodyfikowany nagłówek tabeli z checkboxem "Zaznacz wszystkie"
+      const header = document.createElement("tr");
+      header.innerHTML = `
+        <th style="width: 30px;"><input type="checkbox" id="select-all-dishes" onclick="toggleAllDishes(this)"></th>
+        <th>Dzień</th>
+        <th>Nazwa</th>
+        <th>Opis</th>
+        <th>Cena</th>
+        <th>Akcje</th>
+      `;
+      table.appendChild(header);
+
+      menu.forEach(item => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><input type="checkbox" onchange="toggleDishSelection(event, '${item.name.replace(/'/g, "\\'")}')"></td>
+          <td>${item.day || 'Brak dnia'}</td>
+          <td>${item.name}</td>
+          <td>${item.description}</td>
+          <td>${item.price.toFixed(2)} zł</td>
+          <td>
+            <button onclick="editDish('${item.name.replace(/'/g, "\\'")}', '${item.description.replace(/'/g, "\\'")}', ${item.price}, '${item.day}')" class="ripple">Edytuj</button>
+            <button onclick="deleteDish('${item.name.replace(/'/g, "\\'")}')" class="ripple danger-btn">Usuń</button>
+          </td>
+        `;
+        table.appendChild(row);
+      });
+
+      container.appendChild(table);
+      button.textContent = 'Zapisz komunikat';
+      button.disabled = false;
+      isMenuVisible = true;
+    })
+    .catch(() => {
+      showNotification("Błąd ładowania menu", 'error');
+      button.textContent = 'Pokaż/ukryj menu';
+      button.disabled = false;
+    });
+}
+
+function toggleDishSelection(event, dishName) {
+  if (event.target.checked) {
+    selectedDishes.add(dishName);
+  } else {
+    selectedDishes.delete(dishName);
+  }
+  
+  const deleteSelectedBtn = document.getElementById("delete-selected-dishes");
+  deleteSelectedBtn.style.display = selectedDishes.size > 0 ? 'inline-block' : 'none';
+  
+  const selectAll = document.getElementById("select-all-dishes");
+  if (selectAll) {
+    selectAll.checked = false;
+  }
+}
+
+function toggleAllDishes(checkbox) {
+  const checkboxes = document.querySelectorAll('#menu-list input[type="checkbox"]:not(#select-all-dishes)');
+  const deleteSelectedBtn = document.getElementById("delete-selected-dishes");
+  
+  if (checkbox.checked) {
+    checkboxes.forEach(cb => {
+      cb.checked = true;
+      const dishName = cb.closest('tr').cells[2].textContent;
+      selectedDishes.add(dishName);
+    });
+  } else {
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+      const dishName = cb.closest('tr').cells[2].textContent;
+      selectedDishes.delete(dishName);
+    });
+  }
+  
+  deleteSelectedBtn.style.display = checkbox.checked ? 'inline-block' : 'none';
+}
+
+async function deleteSelectedDishes() {
+  if (selectedDishes.size === 0) return;
+  
+  if (!confirm(`Czy na pewno chcesz usunąć ${selectedDishes.size} wybranych dań?`)) return;
+
+  const deleteSelectedBtn = document.getElementById("delete-selected-dishes");
+  deleteSelectedBtn.innerHTML = '<span class="loader"></span> Usuwanie...';
+  deleteSelectedBtn.disabled = true;
+
+  try {
+    const response = await fetch(`https://bestemcatering.onrender.com/menu/delete_selected`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dish_names: Array.from(selectedDishes),
+        username: loggedInUser
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Nie udało się usunąć dań");
+    }
+
+    const data = await response.json();
+    showNotification(`Usunięto ${data.deleted_count} dań`, "success");
+    selectedDishes.clear();
+    toggleMenu(); // Odśwież listę
+  } catch (error) {
+    console.error("Błąd:", error);
+    showNotification(error.message, "error");
+  } finally {
+    deleteSelectedBtn.innerHTML = 'Usuń wybrane dania';
+    deleteSelectedBtn.disabled = false;
+  }
+}
+
+function deleteDish(dishName) {
+  if (!confirm(`Czy na pewno chcesz usunąć danie: "${dishName}"?`)) return;
+
+  fetch(`https://bestemcatering.onrender.com/menu/delete`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: dishName,
+      username: loggedInUser
+    })
+  })
+  .then(res => {
+    if (!res.ok) {
+      return res.json().then(err => { throw new Error(err.detail || "Błąd usuwania dania") });
+    }
+    return res.json();
+  })
+  .then(data => {
+    showNotification(`Usunięto danie: ${dishName}`, "success");
+    toggleMenu(); // Odśwież listę
+  })
+  .catch(error => {
+    console.error("Błąd:", error);
+    showNotification(error.message, "error");
+  });
+}
+
 
 function toggleAllOrders(checkbox) {
   const checkboxes = document.querySelectorAll('#order-list input[type="checkbox"]:not(#select-all-orders)');
@@ -706,3 +1050,184 @@ async function downloadERP() {
     button.disabled = false;
   }
 }
+
+async function downloadDishesReport() {
+  const button = document.querySelector('.accent-btn');
+  try {
+    // Pokaż stan ładowania
+    button.innerHTML = '<span class="loader"></span> Przygotowywanie raportu...';
+    button.disabled = true;
+
+    const response = await fetch(`https://bestemcatering.onrender.com/admin/orders/dishes_report?admin_username=${encodeURIComponent(loggedInUser)}`);
+    
+    if (!response.ok) {
+      throw new Error("Błąd podczas generowania raportu");
+    }
+
+    // Pobierz nazwę pliku z nagłówków
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const filename = contentDisposition 
+      ? contentDisposition.split('filename=')[1] 
+      : `raport_dan_${new Date().toISOString().slice(0,10)}.xlsx`;
+
+    // Konwertuj odpowiedź na blob
+    const blob = await response.blob();
+    
+    // Utwórz link do pobrania
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Posprzątaj
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    
+    showNotification("Raport dań został pobrany", "success");
+  } catch (error) {
+    console.error("Błąd pobierania raportu:", error);
+    showNotification(error.message, "error");
+  } finally {
+    // Przywróć pierwotny stan przycisku
+    button.innerHTML = 'Pobierz raport dań';
+    button.disabled = false;
+  }
+}
+
+function logout() {
+  // Animacja wyjścia
+  document.getElementById("admin-panel").classList.add('animate__animated', 'animate__fadeOut');
+  
+  setTimeout(() => {
+    // Ukryj panel admina i pokaż sekcję logowania
+    document.getElementById("admin-panel").style.display = "none";
+    document.getElementById("login-section").style.display = "block";
+    document.getElementById("login-section").classList.add('animate__animated', 'animate__fadeIn');
+    
+    // Wyczyść pola logowania
+    document.getElementById("admin-login").value = "";
+    document.getElementById("admin-password").value = "";
+    
+    // Zresetuj zalogowanego użytkownika
+    loggedInUser = null;
+    
+    showNotification("Wylogowano pomyślnie", 'success');
+  }, 500);
+}
+
+async function downloadWordMailMerge() {
+  const button = document.querySelector('.accent-btn');
+  try {
+    button.innerHTML = '<span class="loader"></span> Przygotowywanie...';
+    button.disabled = true;
+
+    const response = await fetch(`https://bestemcatering.onrender.com/admin/orders/word_mailmerge?admin_username=${encodeURIComponent(loggedInUser)}`);
+    
+    if (!response.ok) {
+      throw new Error("Błąd podczas generowania raportu");
+    }
+
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const filename = contentDisposition 
+      ? contentDisposition.split('filename=')[1] 
+      : `raport_korespondencja_${new Date().toISOString().slice(0,10)}.docx`;
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    
+    showNotification("Plik do korespondencji seryjnej został pobrany", "success");
+  } catch (error) {
+    console.error("Błąd pobierania:", error);
+    showNotification(error.message, "error");
+  } finally {
+    button.innerHTML = 'Pobierz do Word (korespondencja)';
+    button.disabled = false;
+  }
+}
+
+async function updateLoginMessage() {
+  const messageText = document.getElementById('messageText').value.trim();
+  if (!messageText) {
+    alert("Wpisz komunikat");
+    return;
+  }
+  try {
+    const response = await fetch('https://bestemcatering.onrender.com/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: messageText }),
+    });
+    if (!response.ok) throw new Error('Błąd zapisu');
+    document.getElementById('saveMsg').textContent = "Komunikat zapisany";
+    fetchCurrentMessage();  // odśwież aktualny komunikat obok
+  } catch (error) {
+    document.getElementById('saveMsg').style.color = 'red';
+    document.getElementById('saveMsg').textContent = "Błąd podczas zapisu";
+    console.error(error);
+  }
+}
+
+
+async function updateLoginMessage() {
+  const messageText = document.getElementById('messageText').value;
+
+  try {
+    const response = await fetch('https://bestemcatering.onrender.com/messages', {
+      method: 'PUT', // lub 'POST', jeśli Twój backend tak obsługuje
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text: messageText }),
+    });
+
+    if (!response.ok) throw new Error('Błąd podczas zapisywania wiadomości');
+
+    document.getElementById('saveMsg').textContent = 'Komunikat został zapisany.';
+    
+    // === ODŚWIEŻ KOMUNIKAT NA STRONIE PO ZAPISIE ===
+    await fetchCurrentMessage();
+
+    setTimeout(() => {
+      document.getElementById('saveMsg').textContent = '';
+    }, 3000);
+
+  } catch (error) {
+    console.error(error);
+    document.getElementById('saveMsg').textContent = 'Błąd podczas zapisywania komunikatu.';
+    setTimeout(() => {
+      document.getElementById('saveMsg').textContent = '';
+    }, 3000);
+  }
+}
+
+async function fetchCurrentMessage() {
+  try {
+    const response = await fetch('https://bestemcatering.onrender.com/messages');
+    if (!response.ok) {
+      throw new Error(`Błąd sieci: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    document.getElementById('currentMessage').textContent = data.text || "(Brak komunikatu)";
+  } catch (error) {
+    document.getElementById('currentMessage').textContent = `Nie udało się pobrać komunikatu: ${error.message}`;
+    console.error(error);
+  }
+}
+
+
+// Wywołaj tę funkcję przy załadowaniu strony:
+window.addEventListener('DOMContentLoaded', () => {
+  fetchCurrentMessage();
+});
+
+

@@ -2,7 +2,7 @@ let loggedInUser = "";
 let userOrders = [];
 let isHistoryVisible = false;
 
-async function login() {
+window.login = async function() {
   const login = document.getElementById("login").value;
   const password = document.getElementById("password").value;
 
@@ -31,8 +31,12 @@ async function login() {
         
         document.getElementById("user-panel").style.display = "block";
         document.getElementById("user-panel").classList.add('animate__animated', 'animate__fadeInUp');
+if (document.getElementById('order-week').value) {
+  updateWeekCalendar(document.getElementById('order-week').value);
+}
         
         document.querySelector(".logout-btn").style.display = "flex";
+	window.dispatchEvent(new Event('userLoggedIn'));
         document.querySelector(".logout-btn").classList.add('animate__animated', 'animate__fadeIn');
         
         loadMenu();
@@ -80,10 +84,10 @@ function updateOrderSummary() {
     summaryElement.classList.remove('animate__animated', 'animate__pulse');
   }, 1000);
   
-  summaryElement.textContent = `Suma zamówień: ${total.toFixed(2)} zł`;
+  summaryElement.textContent = `Suma tygodniowych zamówień: ${total.toFixed(2)} zł`;
   
-  if (total > 50) {
-    const difference = total - 50;
+  if (total > 55) {
+    const difference = total - 55;
     deductionInfo.textContent = `Przekroczenie dofinansowania o: ${difference.toFixed(2)} zł`;
     deductionInfo.style.display = "block";
     deductionInfo.classList.add('animate__animated', 'animate__pulse');
@@ -149,7 +153,10 @@ async function loadMenu() {
       defaultOption.value = "";
       select.appendChild(defaultOption);
 
-      menuItems.forEach(item => {
+      // Filtruj dania tylko dla danego dnia
+      const dayMenuItems = menuItems.filter(item => item.day === day);
+      
+      dayMenuItems.forEach(item => {
         const option = document.createElement("option");
         option.value = JSON.stringify({ name: item.name, price: item.price });
         option.text = `${item.name} (${item.price.toFixed(2)} zł)`;
@@ -170,6 +177,7 @@ async function loadMenu() {
 async function submitOrder() {
   const week = document.getElementById("order-week").value;
   const deliveryLocation = document.getElementById("delivery-location").value;
+  const shift = document.getElementById("shift").value; // Pobierz wartość zmiany
   const selects = document.querySelectorAll("#menu-container select");
 
   if (!week) {
@@ -177,8 +185,18 @@ async function submitOrder() {
     return;
   }
   
+  if (hasExistingOrderForWeek(week)) {
+    showError("Zamówienie na ten tydzień zostało już złożone. !SPRAWDŹ HISTORIĘ ZAMÓWIEŃ!");
+    return;
+  }  
+  
   if (!deliveryLocation) {
     showError("Proszę wybrać miejsce dostawy!");
+    return;
+  }
+
+  if (!shift) {
+    showError("Proszę wybrać zmianę!");
     return;
   }
 
@@ -188,7 +206,7 @@ async function submitOrder() {
   selects.forEach(select => {
     if (select.value) {
       const { name, price } = JSON.parse(select.value);
-      meals[select.name] = [{ name, price }];
+      meals[select.name] = [{ name, price, day: select.name }];
       hasMeals = true;
     }
   });
@@ -202,6 +220,7 @@ async function submitOrder() {
     username: loggedInUser,
     week: week,
     date_range: deliveryLocation,
+    shift: shift, // Dodajemy wybraną zmianę
     meals: meals
   };
 
@@ -218,11 +237,12 @@ async function submitOrder() {
 
     if (response.ok) {
       const data = await response.json();
-      showSuccess("Zamówienie złożone pomyślnie!");
+      showSuccess("Zamówienie złożone pomyślnie i jest już widoczne w histroii zamówień! ");
       loadOrderHistory();
       
       // Reset formularza
       document.getElementById('order-week').value = '';
+      document.getElementById('week-calendar').style.display = 'none'; // Dodaj tę linijkę
       document.getElementById('delivery-location').value = '';
       selects.forEach(select => {
         select.value = '';
@@ -262,23 +282,24 @@ async function toggleHistory() {
       container.classList.add('animate__animated', 'animate__fadeIn');
       
       userOrders.forEach((order, index) => {
-        const div = document.createElement("div");
-        div.classList.add('order-item', 'animate__animated', 'animate__fadeIn');
-        div.style.animationDelay = `${index * 0.1}s`;
-        div.innerHTML = `
-          <div class="order-header">
-            <strong>Tydzień:</strong> ${order.week} (${order.date_range})
-          </div>
-          <div class="order-meals">
-            <strong>Pozycje:</strong>
-            <ul>
-              ${order.meals.map(meal => `<li>${meal.day}: ${meal.name} (${meal.price} zł)</li>`).join("")}
-            </ul>
-          </div>
-          <hr>
-        `;
-        container.appendChild(div);
-      });
+    const div = document.createElement("div");
+    div.classList.add('order-item', 'animate__animated', 'animate__fadeIn');
+    div.style.animationDelay = `${index * 0.1}s`;
+    div.innerHTML = `
+  <div class="order-header">
+    <strong>Tydzień:</strong> ${order.week} (${order.date_range})<br>
+    <strong>Zmiana:</strong> ${order.shift || 'Nie określono'}
+  </div>
+  <div class="order-meals">
+    <strong>Pozycje:</strong>
+    <ul>
+      ${order.meals.map(meal => `<li>${meal.day}: ${meal.name} (${meal.price} zł)</li>`).join("")}
+    </ul>
+  </div>
+  <hr>
+`;
+    container.appendChild(div);
+  });
 
       button.textContent = "Zakryj historię";
       isHistoryVisible = true;
@@ -308,26 +329,33 @@ function logout() {
     loggedInUser = "";
     isHistoryVisible = false;
     userOrders = [];
-    
+
     document.getElementById("login-section").style.display = "block";
     document.getElementById("login-section").classList.add('animate__animated', 'animate__fadeIn');
     document.getElementById("user-panel").style.display = "none";
     document.getElementById("user-panel").classList.remove('animate__animated', 'animate__fadeOut');
     document.querySelector(".logout-btn").style.display = "none";
-    
+
     document.getElementById("login").value = "";
     document.getElementById("password").value = "";
-    
+
     document.getElementById("user-name").textContent = "";
     document.getElementById("menu-container").innerHTML = "";
     document.getElementById("order-history").innerHTML = "";
     document.getElementById("order-summary").textContent = "Suma zamówień: 0.00 zł";
     document.getElementById("deduction-info").style.display = "none";
-    
-    fetch("https://bestemcatering.onrender.com/logout", {
+
+    // fetch do wylogowania
+    fetch("https://bestemcatering.onrender.com/logout", { 
       method: "POST",
       credentials: 'include'
-    }).catch(error => console.log("Błąd wylogowania:", error));
+    })
+      .then(response => response.json())
+      .then(data => {
+        showSuccess("Wylogowano pomyślnie");
+      })
+      .catch(error => showError("Błąd wylogowania"));
+
   }, 500);
 }
 
@@ -344,7 +372,7 @@ function showError(message) {
     padding: 15px 25px;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    z-index: 1000;
+    z-index: 1000; font-size: 1.3em;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -356,7 +384,7 @@ function showError(message) {
       <line x1="12" y1="9" x2="12" y2="13"></line>
       <line x1="12" y1="17" x2="12.01" y2="17"></line>
     </svg>
-    ${message}
+    🚨🤔${message}🤔🚨
   `;
   
   document.body.appendChild(errorDiv);
@@ -364,7 +392,7 @@ function showError(message) {
   setTimeout(() => {
     errorDiv.classList.add('animate__fadeOut');
     setTimeout(() => errorDiv.remove(), 500);
-  }, 3000);
+  }, 4000);
 }
 
 function showSuccess(message) {
@@ -380,7 +408,7 @@ function showSuccess(message) {
     padding: 15px 25px;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    z-index: 1000;
+    z-index: 1000; font-size: 1.3em;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -391,7 +419,7 @@ function showSuccess(message) {
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
       <polyline points="22 4 12 14.01 9 11.01"></polyline>
     </svg>
-    ${message}
+    🎉🤩${message}🤩🎉
   `;
   
   document.body.appendChild(successDiv);
@@ -399,7 +427,7 @@ function showSuccess(message) {
   setTimeout(() => {
     successDiv.classList.add('animate__fadeOut');
     setTimeout(() => successDiv.remove(), 500);
-  }, 3000);
+  }, 4000);
 }
 
 const style = document.createElement('style');
@@ -421,3 +449,139 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
+
+function updateWeekCalendar(weekString) {
+  const calendar = document.getElementById('week-calendar');
+  calendar.innerHTML = '';
+  
+  if (!weekString || !weekString.includes('-W')) {
+    calendar.style.display = 'none';
+    return;
+  }
+  
+  try {
+    calendar.style.display = 'grid';
+    
+    const [year, weekNum] = weekString.split('-W').map(Number);
+    
+    if (isNaN(year)) throw new Error("Invalid year"); // Dodano brakujący nawias
+    if (isNaN(weekNum)) throw new Error("Invalid week");
+    
+    // Tworzymy datę dla pierwszego dnia roku
+    const date = new Date(year, 0, 1);
+    
+    // Znajdź pierwszy czwartek roku (ISO week date)
+    while (date.getDay() !== 4) {
+      date.setDate(date.getDate() + 1);
+    }
+    
+    // Przesuń się do wybranego tygodnia
+    date.setDate(date.getDate() + (weekNum - 1) * 7);
+    
+    // Cofnij się do poniedziałku
+    date.setDate(date.getDate() - 3);
+    
+    // Nagłówki dni i daty
+    const days = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd'];
+    
+    // Wyświetl dni tygodnia z datami
+    for (let i = 0; i < 7; i++) {
+      // Nagłówek dnia
+      const dayHeader = document.createElement('div');
+      dayHeader.className = 'calendar-day-header';
+      dayHeader.textContent = days[i];
+      calendar.appendChild(dayHeader);
+      
+      // Dzień z datą
+      const dayElement = document.createElement('div');
+      dayElement.className = 'calendar-day selected';
+      dayElement.textContent = date.getDate();
+      calendar.appendChild(dayElement);
+      
+      date.setDate(date.getDate() + 1);
+    }
+  } catch (error) {
+    console.error("Błąd generowania kalendarza:", error);
+    calendar.style.display = 'none';
+  }
+}
+
+async function checkOrderExists(username, week) {
+  const url = `/order/exists?username=${encodeURIComponent(username)}&week=${week}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.error("Błąd podczas sprawdzania zamówienia");
+    return false;
+  }
+  const data = await response.json();
+  return data.exists;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  fetchLoginMessage();
+  
+  // Dodajemy nasłuchiwanie po zalogowaniu, a nie od razu
+  window.addEventListener('userLoggedIn', function() {
+    const orderForm = document.getElementById("orderForm");
+    if (orderForm) {
+      orderForm.addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const week = document.getElementById("order-week").value;
+        
+        if (await checkOrderExists(loggedInUser, week)) {
+          document.getElementById("orderExistsMessage").style.display = "block";
+          disableForm();
+          return;
+        }
+        
+        await submitOrder();
+      });
+    }
+  });
+});
+
+function disableForm() {
+  const form = document.getElementById("orderForm");
+  if (form) {
+    const elements = form.elements;
+    for (let i = 0; i < elements.length; i++) {
+      elements[i].disabled = true;
+    }
+  }
+}
+
+function hasExistingOrderForWeek(week) {
+  return userOrders.some(order => order.week === week);
+}
+
+async function fetchLoginMessage() {
+  const messageElement = document.getElementById("loginMessage");
+  
+  try {
+    const response = await fetch("https://bestemcatering.onrender.com/messages");
+    
+    if (!response.ok) {
+      throw new Error(`Błąd HTTP: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Ustawiamy tylko wiadomość z bazy danych
+    if (data.text) {
+      messageElement.textContent = data.text;
+      
+      // Dodajemy efekt pulsowania co 5 sekund
+      setInterval(() => {
+        messageElement.classList.add('animate__animated', 'animate__pulse');
+        setTimeout(() => {
+          messageElement.classList.remove('animate__animated', 'animate__pulse');
+        }, 1000);
+      }, 5000);
+    }
+    
+  } catch (error) {
+    console.error("Błąd pobierania wiadomości:", error);
+    // W przypadku błędu pozostawiamy element pusty (bez domyślnego tekstu)
+    messageElement.style.display = 'none';
+  }
+}
