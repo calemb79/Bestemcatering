@@ -20,7 +20,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from docx import Document
 from docx.shared import Pt
 from fastapi import Query
-
+from typing import Optional
 
 
 app = FastAPI()
@@ -107,6 +107,7 @@ class Message(BaseModel):
 
 class MenuUpdatePayload(BaseModel):
     original_name: str
+    new_name: str  # Dodane nowe pole
     new_description: str
     new_price: float
     new_day: str
@@ -115,6 +116,12 @@ class MenuUpdatePayload(BaseModel):
 class DeleteDishesPayload(BaseModel):
     dish_names: List[str]
     username: str
+
+class UpdateUserPayload(BaseModel):
+    old_username: str
+    new_username: str
+    new_user_code: str
+    admin_username: str
 
 
 # Funkcje haseĹ‚
@@ -794,19 +801,35 @@ def update_menu_item(payload: MenuUpdatePayload):
     if not admin or admin["role"] != "admin":
         raise HTTPException(status_code=403, detail="Brak uprawnień")
 
+    # Sprawdź czy danie istnieje
+    existing_item = menu_collection.find_one({"name": payload.original_name})
+    if not existing_item:
+        raise HTTPException(status_code=404, detail="Pozycja nie istnieje")
+
+    # Sprawdź czy nowa nazwa już istnieje (jeśli została zmieniona)
+    if payload.original_name != payload.new_name:
+        if menu_collection.find_one({"name": payload.new_name}):
+            raise HTTPException(status_code=400, detail="Danie o tej nazwie już istnieje")
+
+    update_data = {
+        "name": payload.new_name,
+        "description": payload.new_description,
+        "price": payload.new_price,
+        "day": payload.new_day
+    }
+
     result = menu_collection.update_one(
         {"name": payload.original_name},
-        {"$set": {
-            "description": payload.new_description,
-            "price": payload.new_price,
-            "day": payload.new_day
-        }}
+        {"$set": update_data}
     )
 
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Pozycja nie istnieje")
+        raise HTTPException(status_code=404, detail="Nie dokonano zmian")
 
-    return {"msg": f"Zaktualizowano pozycję {payload.original_name}"}
+    return {
+        "msg": f"Zaktualizowano pozycję z '{payload.original_name}' na '{payload.new_name}'",
+        "new_name": payload.new_name
+    }
 
 @app.delete("/menu/delete_selected")
 def delete_selected_dishes(payload: DeleteDishesPayload):
@@ -820,3 +843,45 @@ def delete_selected_dishes(payload: DeleteDishesPayload):
         "message": f"Usunięto {result.deleted_count} dań",
         "deleted_count": result.deleted_count
     }
+
+class UpdateUserPayload(BaseModel):
+    old_username: str
+    new_username: str
+    new_user_code: str
+    admin_username: str
+
+@app.put("/admin/update_user")
+def update_user(payload: UpdateUserPayload):
+    admin = users_collection.find_one({"username": payload.admin_username})
+    if not admin or admin["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Brak uprawnień")
+
+    # Check if the old user exists
+    old_user = users_collection.find_one({"username": payload.old_username})
+    if not old_user:
+        raise HTTPException(status_code=404, detail="Użytkownik nie istnieje")
+
+    # Check if new username is already taken (if changed)
+    if payload.old_username != payload.new_username:
+        if users_collection.find_one({"username": payload.new_username}):
+            raise HTTPException(status_code=400, detail="Nazwa użytkownika jest już zajęta")
+
+    # Update user data
+    update_data = {
+        "username": payload.new_username,
+        "user_code": payload.new_user_code
+    }
+
+    users_collection.update_one(
+        {"username": payload.old_username},
+        {"$set": update_data}
+    )
+
+    # Also update orders if username changed
+    if payload.old_username != payload.new_username:
+        orders_collection.update_many(
+            {"username": payload.old_username},
+            {"$set": {"username": payload.new_username}}
+        )
+
+    return {"msg": f"Dane użytkownika {payload.old_username} zostały zaktualizowane"}

@@ -116,6 +116,134 @@
     100% { transform: scale(1); }
   }
 
+#home-order-btn {
+    margin-bottom: 20px;
+    background-color: var(--success);
+  }
+  
+  #home-order-btn:hover {
+    background-color: #31ADA5;
+    transform: translateY(-2px); /* efekt uniesienia */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* cień */
+  }
+
+#home-menu-container .menu-group {
+  transition: all 0.3s ease;
+}
+
+#home-menu-container .menu-group:hover {
+  transform: translateY(-3px);
+}
+
+/* Style dla zakładki zamówień domowych */
+#home-menu-container select {
+  background-color: #EFFCFF; /* Jasnozielone tło */
+  border: 2px solid var(--success); /* Zielona ramka */
+}
+
+#home-menu-container select:focus {
+  background-color: #EFFCFF; /* Ciemniejsze zielone tło przy focusie */
+  border-color: var(--success);
+  box-shadow: 0 0 0 6px rgba(13, 242, 216, 0.3); /* Zielony cień */
+}
+
+#home-menu-container label {
+  color: var(--success); /* Zielony kolor etykiet */
+  font-weight: 600;
+}
+
+#home-order-section h2 {
+  background: linear-gradient(90deg, var(--success), #31ADA5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#home-order-section {
+  background: rgba(255, 255, 255, 0.98); /* Białe tło z lekką przeźroczystością */
+  border: 2px solid var(--success); /* Zielona ramka */
+}
+
+#home-order-section::before {
+  background: linear-gradient(135deg, rgba(74, 214, 109, 0.1) 0%, rgba(255,255,255,0) 50%);
+}
+
+#home-order-section button {
+  background-color: var(--success);
+}
+
+#home-order-section button:hover {
+  background-color: #16A3C4;
+}
+
+  
+  .back-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: var(--warning);
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    width: auto;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+  }
+  
+  .back-btn:hover {
+    background-color: #e67300;
+  }
+  
+.order-item {
+  margin-bottom: 15px;
+  padding: 15px;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.order-item.work-order {
+  border-left: 5px solid var(--primary);
+}
+
+.order-item.home-order {
+  border-left: 5px solid var(--success);
+}
+
+.order-header {
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.order-meals ul {
+  padding-left: 20px;
+  margin: 5px 0;
+}
+
+.order-meals li {
+  margin-bottom: 5px;
+}
+
+  #home-order-section {
+    width: 100%;
+    max-width: 600px;
+    animation: fadeIn 0.8s ease-out;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15),
+                0 15px 20px rgba(0, 0, 0, 0.1),
+                0 5px 5px rgba(0, 0, 0, 0.05),
+                inset 0 -2px 5px rgba(0, 0, 0, 0.05),
+                inset 0 2px 5px rgba(255, 255, 255, 0.8);
+    padding: 40px;
+    margin-top: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
 .calendar-day-header {
   font-weight: bold;
   color: var(--secondary);
@@ -355,6 +483,80 @@
     .fade-in {
       animation: fadeIn 0.6s ease-out;
     }
+/* Style dla historii zamówień */
+.history-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.order-item {
+  margin-bottom: 15px;
+  padding: 15px;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.order-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.order-item.work-order {
+  border-left: 5px solid var(--primary);
+  background: rgba(67, 97, 238, 0.05);
+}
+
+.order-item.home-order {
+  border-left: 5px solid var(--success);
+  background: rgba(74, 214, 109, 0.05);
+}
+
+.order-header {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #eee;
+  font-size: 15px;
+  color: var(--dark);
+}
+
+.order-header strong {
+  color: var(--secondary);
+}
+
+.order-meals ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.order-meals li {
+  margin-bottom: 6px;
+  font-size: 14px;
+  list-style-type: none;
+  position: relative;
+}
+
+.order-meals li:before {
+  content: "•";
+  color: var(--accent);
+  font-weight: bold;
+  display: inline-block; 
+  width: 1em;
+  margin-left: -1em;
+}
+
+.order-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gray), transparent);
+  margin: 15px 0;
+  border: none;
+}
+
 
     /* Custom scrollbar */
     ::-webkit-scrollbar {
@@ -505,19 +707,46 @@
 
 
       <div id="menu-container"></div>
-      <button onclick="submitOrder()" class="ripple">Złóż zamówienie</button>
+      <button onclick="submitOrder()" class="ripple"> 
+	<span style="font-size: 1.7em; margin-right: 8px;"> 🍽️ </span> Złóż zamówienie
+	</button>
 
       <div class="order-summary" id="order-summary">Suma dotychczasowych zamówień: 0.00 zł</div>
       <div class="deduction-info" id="deduction-info"></div>
         </form>
+	<button id="home-order-btn" onclick="showHomeOrderSection()" class="ripple">
+        <span style="font-size: 1.7em; margin-right: 5px;"> 🏠 </span> Zamawiam do domu</button>
       <h3>Historia zamówień</h3>
-      <button id="toggle-history" onclick="toggleHistory()" class="ripple">Pokaż historię</button>
-      <div id="order-history"></div>
+      <button id="toggle-history" onclick="toggleHistory()" class="ripple">
+	<span style="font-size: 1.7em; margin-right: 5px;"> 📖 </span> Pokaż historię zamówień</button>
+
+      <div id="order-history" class="history-container"></div>
      <div id="orderExistsMessage" style="display: none; color: red;">
   	Zamówienie na ten tydzień zostało już złożone. 
     </div>
    </div>
   </div>
+
+<div id="home-order-section" style="display:none;">
+  <div class="panel-header">
+    <h2>Zamówienia domowe</h2>
+    <button class="back-btn ripple" onclick="hideHomeOrderSection()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+      </svg>
+      Powrót
+    </button>
+  </div>
+
+  <div id="home-order-preview" class="order-preview">Suma zamówienia domowego: 0.00 zł</div>
+  <div id="home-menu-container"></div>
+  <button onclick="submitHomeOrder()" class="ripple">
+	<span style="font-size: 1.7em; margin-right: 8px;"> 🍽️ </span> Złóż zamówienie domowe
+	</button>
+  
+  <h3>Historia zamówień domowych</h3>
+  <div id="home-order-history"></div>
+</div>
 
   <div class="copyright">supported by aim4, all right reserved 04/2025r.</div>
 

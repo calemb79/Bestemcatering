@@ -1,6 +1,8 @@
 let loggedInUser = "";
 let userOrders = [];
 let isHistoryVisible = false;
+let homeOrders = [];
+let isHomeOrderSectionVisible = false;
 
 window.login = async function() {
   const login = document.getElementById("login").value;
@@ -280,28 +282,52 @@ async function toggleHistory() {
 
       container.innerHTML = "";
       container.classList.add('animate__animated', 'animate__fadeIn');
+
+if (userOrders.length > 0) {
+  const header = document.createElement('h4');
+  header.textContent = 'Twoje zamówienia:';
+  header.style.marginBottom = '15px';
+  header.style.color = 'var(--secondary)';
+  container.appendChild(header);
+}
       
       userOrders.forEach((order, index) => {
-    const div = document.createElement("div");
-    div.classList.add('order-item', 'animate__animated', 'animate__fadeIn');
-    div.style.animationDelay = `${index * 0.1}s`;
-    div.innerHTML = `
-  <div class="order-header">
-    <strong>Tydzień:</strong> ${order.week} (${order.date_range})<br>
-    <strong>Zmiana:</strong> ${order.shift || 'Nie określono'}
-  </div>
-  <div class="order-meals">
-    <strong>Pozycje:</strong>
-    <ul>
-      ${order.meals.map(meal => `<li>${meal.day}: ${meal.name} (${meal.price} zł)</li>`).join("")}
-    </ul>
-  </div>
-  <hr>
-`;
-    container.appendChild(div);
-  });
+        const div = document.createElement("div");
+        div.classList.add('order-item', 'animate__animated', 'animate__fadeIn');
+        
+        // Dodaj klasę w zależności od typu zamówienia
+        if (order.week === "Domowe") {
+          div.classList.add('home-order');
+        } else {
+          div.classList.add('work-order');
+        }
+        
+        div.style.animationDelay = `${index * 0.1}s`;
+        
+        // Dodaj ikonę w zależności od typu zamówienia
+        const icon = order.week === "Domowe" ? 
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>' : 
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>';
+        
+        div.innerHTML = `
+          <div class="order-header">
+            ${icon}
+            <strong>Tydzień:</strong> ${order.week} 
+            ${order.date_range ? `(${order.date_range})` : ''}<br>
+            ${order.shift ? `<strong>Zmiana:</strong> ${order.shift}` : ''}
+          </div>
+          <div class="order-meals">
+            <strong>Zamówione posiłki:</strong>
+            <ul>
+              ${order.meals.map(meal => `<li>${meal.day}: ${meal.name} (${meal.price} zł)</li>`).join("")}
+            </ul>
+          </div>
+          <hr class="order-divider">
+        `;
+        container.appendChild(div);
+      });
 
-      button.textContent = "Zakryj historię";
+      button.textContent = "Ukryj historię";
       isHistoryVisible = true;
     } else {
       container.classList.add('animate__animated', 'animate__fadeOut');
@@ -317,7 +343,7 @@ async function toggleHistory() {
     showError("Nie udało się załadować historii zamówień");
   } finally {
     button.disabled = false;
-    button.innerHTML = isHistoryVisible ? "Zakryj historię" : "Pokaż historię";
+    button.innerHTML = isHistoryVisible ? "Ukryj historię" : "Pokaż historię";
   }
 }
 
@@ -583,5 +609,194 @@ async function fetchLoginMessage() {
     console.error("Błąd pobierania wiadomości:", error);
     // W przypadku błędu pozostawiamy element pusty (bez domyślnego tekstu)
     messageElement.style.display = 'none';
+  }
+}
+
+// Add these new functions
+function showHomeOrderSection() {
+  document.getElementById("user-panel").style.display = "none";
+  document.getElementById("home-order-section").style.display = "block";
+  isHomeOrderSectionVisible = true;
+  loadHomeMenu();
+  loadHomeOrderHistory();
+}
+
+function hideHomeOrderSection() {
+  document.getElementById("home-order-section").style.display = "none";
+  document.getElementById("user-panel").style.display = "block";
+  isHomeOrderSectionVisible = false;
+}
+
+async function loadHomeMenu() {
+  try {
+    const res = await fetch("https://bestemcatering.onrender.com/menu/list");
+    const menuItems = await res.json();
+
+    const days = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek"];
+    const container = document.getElementById("home-menu-container");
+    container.innerHTML = "";
+
+    days.forEach((day, index) => {
+      const groupDiv = document.createElement("div");
+      groupDiv.classList.add('menu-group', 'animate__animated', 'animate__fadeIn');
+      groupDiv.style.animationDelay = `${index * 0.1}s`;
+
+      const label = document.createElement("label");
+      label.textContent = `${day}:`;
+
+      const select = document.createElement("select");
+      select.name = day;
+      select.classList.add('ripple');
+      select.addEventListener('change', updateHomeOrderPreview);
+
+      const defaultOption = document.createElement("option");
+      defaultOption.text = "Wybierz danie";
+      defaultOption.value = "";
+      select.appendChild(defaultOption);
+
+      const dayMenuItems = menuItems.filter(item => item.day === day);
+      
+      dayMenuItems.forEach(item => {
+        const option = document.createElement("option");
+        option.value = JSON.stringify({ name: item.name, price: item.price });
+        option.text = `${item.name} (${item.price.toFixed(2)} zł)`;
+        select.appendChild(option);
+      });
+
+      groupDiv.appendChild(label);
+      groupDiv.appendChild(select);
+      container.appendChild(groupDiv);
+    });
+    
+    updateHomeOrderPreview();
+  } catch (error) {
+    console.error("Błąd ładowania menu domowego:", error);
+  }
+}
+
+function updateHomeOrderPreview() {
+  const selects = document.querySelectorAll("#home-menu-container select");
+  let total = 0;
+  let hasSelection = false;
+  
+  selects.forEach(select => {
+    if (select.value) {
+      const { price } = JSON.parse(select.value);
+      total += parseFloat(price);
+      hasSelection = true;
+    }
+  });
+  
+  const preview = document.getElementById("home-order-preview");
+  preview.textContent = `Suma zamówienia domowego: ${total.toFixed(2)} zł`;
+  
+  if (hasSelection) {
+    preview.classList.add('visible');
+  } else {
+    preview.classList.remove('visible');
+  }
+  
+  preview.classList.add('animate__animated', 'animate__pulse');
+  setTimeout(() => {
+    preview.classList.remove('animate__animated', 'animate__pulse');
+  }, 500);
+}
+
+async function submitHomeOrder() {
+  const selects = document.querySelectorAll("#home-menu-container select");
+  
+  const meals = {};
+  let hasMeals = false;
+
+  selects.forEach(select => {
+    if (select.value) {
+      const { name, price } = JSON.parse(select.value);
+      meals[select.name] = [{ name, price, day: select.name }];
+      hasMeals = true;
+    }
+  });
+
+  if (!hasMeals) {
+    showError("Proszę wybrać przynajmniej jedno danie!");
+    return;
+  }
+
+  const payload = {
+    username: loggedInUser,
+    week: "Domowe",
+    date_range: "Dom",
+    shift: "Domowa",
+    meals: meals
+  };
+
+  const submitBtn = document.querySelector('#home-order-section button[onclick="submitHomeOrder()"]');
+  submitBtn.innerHTML = '<span class="loader"></span> Przetwarzanie...';
+  submitBtn.disabled = true;
+
+  try {
+    const response = await fetch("https://bestemcatering.onrender.com/order/weekly", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      showSuccess("Zamówienie domowe złożone pomyślnie!");
+      loadHomeOrderHistory();
+      
+      // Reset formularza
+      selects.forEach(select => {
+        select.value = '';
+        select.classList.add('animate__animated', 'animate__flash');
+        setTimeout(() => {
+          select.classList.remove('animate__animated', 'animate__flash');
+        }, 1000);
+      });
+      
+      updateHomeOrderPreview();
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Nie udało się złożyć zamówienia domowego");
+    }
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    submitBtn.innerHTML = 'Złóż zamówienie domowe';
+    submitBtn.disabled = false;
+  }
+}
+
+async function loadHomeOrderHistory() {
+  try {
+    const res = await fetch(`https://bestemcatering.onrender.com/order/history?username=${loggedInUser}`);
+    const allOrders = await res.json();
+    
+    // Filter only home orders (where week is "Domowe")
+    homeOrders = allOrders.filter(order => order.week === "Domowe");
+    
+    const container = document.getElementById("home-order-history");
+    container.innerHTML = "";
+    
+    homeOrders.forEach((order, index) => {
+      const div = document.createElement("div");
+      div.classList.add('order-item', 'animate__animated', 'animate__fadeIn');
+      div.style.animationDelay = `${index * 0.1}s`;
+      div.innerHTML = `
+        <div class="order-header">
+          <strong>Data zamówienia:</strong> ${new Date(order.timestamp).toLocaleString()}
+        </div>
+        <div class="order-meals">
+          <strong>Pozycje:</strong>
+          <ul>
+            ${order.meals.map(meal => `<li>${meal.day}: ${meal.name} (${meal.price} zł)</li>`).join("")}
+          </ul>
+        </div>
+        <hr>
+      `;
+      container.appendChild(div);
+    });
+  } catch (error) {
+    console.error("Błąd ładowania historii zamówień domowych:", error);
   }
 }

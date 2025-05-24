@@ -7,6 +7,30 @@ let isMenuVisible = false; // Dodaj tę zmienną na początku pliku, z innymi st
 let selectedDishes = new Set();
 
 // Helper functions for notifications
+// Dodaj to po początkowych deklaracjach zmiennych (około linii 9)
+window.toggleOrderSelection = function(event, orderId) {
+  const checkbox = event.target;
+  const row = checkbox.closest('tr');
+  
+  if (checkbox.checked) {
+    selectedOrders.add(orderId);
+    row.classList.add('selected-row');
+  } else {
+    selectedOrders.delete(orderId);
+    row.classList.remove('selected-row');
+  }
+  
+  const deleteSelectedBtn = document.getElementById("delete-selected-orders");
+  deleteSelectedBtn.style.display = selectedOrders.size > 0 ? 'inline-block' : 'none';
+  
+  const selectAll = document.getElementById("select-all-orders");
+  if (selectAll) {
+    const allCheckboxes = document.querySelectorAll('#order-list input[type="checkbox"]:not(#select-all-orders)');
+    selectAll.checked = selectedOrders.size > 0 && selectedOrders.size === allCheckboxes.length;
+    selectAll.indeterminate = selectedOrders.size > 0 && selectedOrders.size < allCheckboxes.length;
+  }
+};
+
 function showNotification(message, type = 'success') {
   const notification = document.createElement('div');
   notification.className = `notification ${type}`;
@@ -161,7 +185,7 @@ function fetchUsers() {
     .then(users => {
       container.innerHTML = "";
       
-      // Dodaj pole wyszukiwania
+      // Add search field
       const searchContainer = document.createElement('div');
       searchContainer.style.marginBottom = '10px';
       searchContainer.style.display = 'flex';
@@ -205,11 +229,13 @@ function fetchUsers() {
 
       users.forEach(user => {
         const row = document.createElement("tr");
+        row.setAttribute('data-username', user.username);
         row.innerHTML = `
           <td><b>${user.username}</b></td>
           <td>${user.user_code || 'Brak kodu'}</td>
           <td>${user.role}</td>
           <td>
+            <button onclick="editUserPrompt('${user.username}', '${user.user_code || ''}')" class="ripple">Edytuj</button>
             <button onclick="deleteUser('${user.username}')" class="ripple danger-btn">Usuń</button>
             <button onclick="changeRolePrompt('${user.username}')" class="ripple">Zmień rolę</button>
             <button onclick="changePasswordPrompt('${user.username}')" class="ripple">Zmień hasło</button>
@@ -230,6 +256,77 @@ function fetchUsers() {
     .finally(() => {
       refreshButton.disabled = false;
     });
+}
+
+function editUserPrompt(username, currentCode) {
+  const row = document.querySelector(`tr[data-username="${username}"]`);
+  if (!row) return;
+
+  // Check if edit form already exists
+  if (row.nextElementSibling && row.nextElementSibling.classList.contains('edit-user-form-row')) {
+    row.nextElementSibling.remove();
+    return;
+  }
+
+  // Remove any other edit forms
+  document.querySelectorAll('.edit-user-form-row').forEach(el => el.remove());
+
+  const formRow = document.createElement('tr');
+  formRow.className = 'edit-user-form-row';
+  formRow.innerHTML = `
+    <td colspan="4">
+      <div class="edit-user-form">
+        <div>
+          <label>Nowa nazwa użytkownika:</label>
+          <input type="text" id="edit-username" value="${username}" />
+        </div>
+        <div>
+          <label>Nowy kod użytkownika:</label>
+          <input type="text" id="edit-user-code" value="${currentCode || ''}" />
+        </div>
+        <div class="edit-user-form-buttons">
+          <button onclick="saveUserChanges('${username}')" class="ripple success-btn">Zapisz</button>
+          <button onclick="this.closest('tr').remove()" class="ripple danger-btn">Anuluj</button>
+        </div>
+      </div>
+    </td>
+  `;
+
+  row.parentNode.insertBefore(formRow, row.nextSibling);
+}
+
+async function saveUserChanges(oldUsername) {
+  const newUsername = document.getElementById('edit-username').value.trim();
+  const newUserCode = document.getElementById('edit-user-code').value.trim();
+
+  if (!newUsername) {
+    showNotification("Nazwa użytkownika nie może być pusta", 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://bestemcatering.onrender.com/admin/update_user`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        old_username: oldUsername,
+        new_username: newUsername,
+        new_user_code: newUserCode,
+        admin_username: loggedInUser
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Błąd podczas aktualizacji użytkownika");
+    }
+
+    showNotification("Dane użytkownika zostały zaktualizowane", 'success');
+    fetchUsers(); // Refresh the user list
+  } catch (error) {
+    console.error("Błąd:", error);
+    showNotification(error.message, 'error');
+  }
 }
 
 function filterUsersTable(searchTerm) {
@@ -388,20 +485,17 @@ function loadMenu() {
       });
   }
 }
+
 function editDish(name, description, price, day) {
-  // Escape single quotes in name to prevent JS errors
-  const escapedName = name.replace(/'/g, "\\'");
-  
-  // Wypełnij formularz edycji danymi dania
-  document.getElementById("edit-dish-name").value = escapedName;
+  // Ustaw oryginalną nazwę jako atrybut danych
+  document.getElementById("edit-dish-name").setAttribute('data-original-name', name);
+  document.getElementById("edit-dish-name").value = name;
+  document.getElementById("edit-dish-name").readOnly = false;
   document.getElementById("edit-dish-description").value = description;
   document.getElementById("edit-dish-price").value = price;
   document.getElementById("edit-dish-day").value = day;
   
-  // Pokaż sekcję edycji
   document.getElementById("edit-menu-section").style.display = "block";
-  
-  // Przewiń do sekcji edycji
   document.getElementById("edit-menu-section").scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -415,12 +509,13 @@ function cancelEditMenu() {
 }
 
 async function saveEditedDish() {
-  const originalName = document.getElementById("edit-dish-name").value;
+  const originalName = document.getElementById("edit-dish-name").getAttribute('data-original-name');
+  const newName = document.getElementById("edit-dish-name").value;
   const newDescription = document.getElementById("edit-dish-description").value;
   const newPrice = parseFloat(document.getElementById("edit-dish-price").value);
   const newDay = document.getElementById("edit-dish-day").value;
 
-  if (!originalName || !newDescription || isNaN(newPrice)) {
+  if (!originalName || !newName || !newDescription || isNaN(newPrice)) {
     showNotification("Wypełnij wszystkie pola", 'error');
     return;
   }
@@ -428,9 +523,13 @@ async function saveEditedDish() {
   try {
     const response = await fetch("https://bestemcatering.onrender.com/menu/update", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
       body: JSON.stringify({
         original_name: originalName,
+        new_name: newName,
         new_description: newDescription,
         new_price: newPrice,
         new_day: newDay,
@@ -439,11 +538,12 @@ async function saveEditedDish() {
     });
 
     if (!response.ok) {
-      throw new Error("Błąd podczas aktualizacji dania");
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Błąd podczas aktualizacji dania");
     }
 
     const data = await response.json();
-    showNotification(data.msg || "Danie zostało zaktualizowane", 'success');
+    showNotification(data.msg, 'success');
     cancelEditMenu();
     loadMenu();
   } catch (error) {
@@ -451,7 +551,6 @@ async function saveEditedDish() {
     showNotification(error.message, 'error');
   }
 }
-
 // === Excel export ===
   
 function fetchOrders() {
@@ -547,9 +646,11 @@ function fetchOrders() {
 
             // Checkbox do wyboru
             const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.onchange = (e) => toggleOrderSelection(e, orderId);
-            
+	checkbox.type = "checkbox";
+	checkbox.dataset.orderId = orderId; // Dodajemy data-atrybut
+	checkbox.addEventListener('change', function(e) {
+   	 window.toggleOrderSelection(e, orderId);
+	});
             // Przycisk usuwania
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Usuń";
@@ -645,9 +746,11 @@ async function deleteOrder(orderId) {
     showNotification(error.message, "error");
   }
 }
-// Add loader styles
+
+// Add loader styles and selection styles
 const style = document.createElement('style');
 style.textContent = `
+  /* Loader styles (oryginalne) */
   .loader {
     display: inline-block;
     width: 16px;
@@ -668,6 +771,59 @@ style.textContent = `
   
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  /* Wspólne style dla obu zakładek (Zamówienia i Menu) */
+  .orders-table tr.selected-row,
+  #menu-list tr.selected-row {
+    background-color: rgba(0, 123, 255, 0.1);
+    transition: background-color 0.2s ease;
+  }
+
+  #select-all-orders:indeterminate,
+  #select-all-dishes:indeterminate {
+    background-color: var(--primary-color, #007bff);
+    border-color: var(--primary-color, #007bff);
+    opacity: 0.5;
+  }
+
+  /* Style specyficzne dla zakładki Menu */
+  #menu-list {
+    margin-top: 15px;
+  }
+
+  #menu-list table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #menu-list th, #menu-list td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+
+  #menu-list tr:not(.selected-row):hover {
+    background-color: rgba(0, 123, 255, 0.05);
+  }
+
+  #menu-list input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+
+  #menu-list .danger-btn {
+    background-color: #dc3545;
+  }
+
+  /* Responsywność */
+  @media (max-width: 768px) {
+    #menu-list th, #menu-list td {
+      padding: 6px 8px;
+      font-size: 0.9em;
+    }
   }
 `;
 document.head.appendChild(style);
@@ -717,24 +873,27 @@ async function downloadExcel() {
   }
 }
 
-function toggleOrderSelection(event, orderId) {
-  if (event.target.checked) {
-    selectedOrders.add(orderId);
-  } else {
-    selectedOrders.delete(orderId);
-  }
-  
-  // Aktualizuj przycisk "Usuń wybrane"
+function toggleAllOrders(checkbox) {
+  const checkboxes = document.querySelectorAll('#order-list input[type="checkbox"]:not(#select-all-orders)');
   const deleteSelectedBtn = document.getElementById("delete-selected-orders");
-  deleteSelectedBtn.style.display = selectedOrders.size > 0 ? 'inline-block' : 'none';
   
-  // Aktualizuj checkbox "Zaznacz wszystkie"
-  const selectAll = document.getElementById("select-all-orders");
-  if (selectAll) {
-    selectAll.checked = false;
+  if (checkbox.checked) {
+    checkboxes.forEach(cb => {
+      cb.checked = true;
+      const orderId = cb.getAttribute('data-order-id') || cb.closest('tr').getAttribute('data-order-id');
+      if (orderId) selectedOrders.add(orderId);
+    });
+  } else {
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+      const orderId = cb.getAttribute('data-order-id') || cb.closest('tr').getAttribute('data-order-id');
+      if (orderId) selectedOrders.delete(orderId);
+    });
   }
+  
+  // Pokaż przycisk "Usuń wybrane", jeśli jest co najmniej 1 zaznaczenie
+  deleteSelectedBtn.style.display = selectedOrders.size > 0 ? 'inline-block' : 'none';
 }
-
 
 // === Menu Management ===
 function toggleMenu() {
@@ -804,10 +963,15 @@ function toggleMenu() {
 }
 
 function toggleDishSelection(event, dishName) {
-  if (event.target.checked) {
+  const checkbox = event.target;
+  const row = checkbox.closest('tr');
+  
+  if (checkbox.checked) {
     selectedDishes.add(dishName);
+    row.classList.add('selected-row');
   } else {
     selectedDishes.delete(dishName);
+    row.classList.remove('selected-row');
   }
   
   const deleteSelectedBtn = document.getElementById("delete-selected-dishes");
@@ -815,7 +979,9 @@ function toggleDishSelection(event, dishName) {
   
   const selectAll = document.getElementById("select-all-dishes");
   if (selectAll) {
-    selectAll.checked = false;
+    const allCheckboxes = document.querySelectorAll('#menu-list input[type="checkbox"]:not(#select-all-dishes)');
+    selectAll.checked = selectedDishes.size > 0 && selectedDishes.size === allCheckboxes.length;
+    selectAll.indeterminate = selectedDishes.size > 0 && selectedDishes.size < allCheckboxes.length;
   }
 }
 
@@ -823,19 +989,19 @@ function toggleAllDishes(checkbox) {
   const checkboxes = document.querySelectorAll('#menu-list input[type="checkbox"]:not(#select-all-dishes)');
   const deleteSelectedBtn = document.getElementById("delete-selected-dishes");
   
-  if (checkbox.checked) {
-    checkboxes.forEach(cb => {
-      cb.checked = true;
-      const dishName = cb.closest('tr').cells[2].textContent;
+  checkboxes.forEach(cb => {
+    cb.checked = checkbox.checked;
+    const dishName = cb.closest('tr').cells[2].textContent;
+    const row = cb.closest('tr');
+    
+    if (checkbox.checked) {
       selectedDishes.add(dishName);
-    });
-  } else {
-    checkboxes.forEach(cb => {
-      cb.checked = false;
-      const dishName = cb.closest('tr').cells[2].textContent;
+      row.classList.add('selected-row');
+    } else {
       selectedDishes.delete(dishName);
-    });
-  }
+      row.classList.remove('selected-row');
+    }
+  });
   
   deleteSelectedBtn.style.display = checkbox.checked ? 'inline-block' : 'none';
 }
@@ -866,6 +1032,9 @@ async function deleteSelectedDishes() {
       throw new Error(error.detail || "Nie udało się usunąć dań");
     }
 
+document.querySelectorAll('#menu-list tr.selected-row').forEach(row => {
+  row.classList.remove('selected-row');
+});
     const data = await response.json();
     showNotification(`Usunięto ${data.deleted_count} dań`, "success");
     selectedDishes.clear();
@@ -913,21 +1082,28 @@ function toggleAllOrders(checkbox) {
   const checkboxes = document.querySelectorAll('#order-list input[type="checkbox"]:not(#select-all-orders)');
   const deleteSelectedBtn = document.getElementById("delete-selected-orders");
   
-  if (checkbox.checked) {
-    checkboxes.forEach(cb => {
-      cb.checked = true;
-      const orderId = cb.getAttribute('data-order-id') || cb.closest('tr').getAttribute('data-order-id');
-      if (orderId) selectedOrders.add(orderId);
-    });
-  } else {
-    checkboxes.forEach(cb => {
-      cb.checked = false;
-      const orderId = cb.getAttribute('data-order-id') || cb.closest('tr').getAttribute('data-order-id');
-      if (orderId) selectedOrders.delete(orderId);
-    });
-  }
+  checkboxes.forEach(cb => {
+    cb.checked = checkbox.checked;
+    const orderId = cb.dataset.orderId || cb.closest('tr').dataset.orderId;
+    const row = cb.closest('tr');
+    
+    if (checkbox.checked) {
+      selectedOrders.add(orderId);
+      row.classList.add('selected-row');
+    } else {
+      selectedOrders.delete(orderId);
+      row.classList.remove('selected-row');
+    }
+  });
+
+  // Pokaż przycisk jeśli jest jakiekolwiek zaznaczenie
+  deleteSelectedBtn.style.display = selectedOrders.size > 0 ? 'inline-block' : 'none';
   
-  deleteSelectedBtn.style.display = checkbox.checked ? 'inline-block' : 'none';
+  // Ustaw stan pośredni jeśli część jest zaznaczona
+  checkbox.indeterminate = false;
+  if (selectedOrders.size > 0 && selectedOrders.size < checkboxes.length) {
+    checkbox.indeterminate = true;
+  }
 }
 
 async function deleteSelectedOrders() {
@@ -958,7 +1134,21 @@ async function deleteSelectedOrders() {
 
     const data = await response.json();
     showNotification(`Usunięto ${data.deleted_count} zamówień`, "success");
+    
+    // Wyczyść selekcję wizualną
+    document.querySelectorAll('#order-list .selected-row').forEach(row => {
+      row.classList.remove('selected-row');
+    });
+    
     selectedOrders.clear();
+    
+    // Zresetuj checkbox "Zaznacz wszystkie"
+    const selectAll = document.getElementById("select-all-orders");
+    if (selectAll) {
+      selectAll.checked = false;
+      selectAll.indeterminate = false;
+    }
+    
     fetchOrders(); // Odśwież listę
   } catch (error) {
     console.error("Błąd:", error);
@@ -968,7 +1158,6 @@ async function deleteSelectedOrders() {
     deleteSelectedBtn.disabled = false;
   }
 }
-
 async function downloadPDF() {
   const button = document.querySelector('.danger-btn');
   try {
