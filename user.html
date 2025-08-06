@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel użytkownika</title>
  
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
   <style>
     :root {
@@ -14,7 +14,7 @@
       --accent: #4cc9f0;
       --danger: #f72585;
       --success: #4ad66d;
-      --warning: #f77f00;
+      --warning: #f75f00;
       --light: #f8f9fa;
       --dark: #212529;
       --gray: #6c757d;
@@ -64,7 +64,7 @@
     }
     
     .message-box.warning {
-     background-color: #f7ad00;
+     background-color: #e65a02;
      opacity: 0.7;
      color: white;
      font-size: 0.85rem; /* mniejsza czcionka */
@@ -75,7 +75,7 @@
 
 
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Poppins', sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -192,6 +192,22 @@
         transform: scale(0.1); /* Zmniejsza się do 10% */
     }
 }
+
+@keyframes dust {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--x), var(--y)) scale(0.5); opacity: 0; }
+}
+
+.dust-particle {
+  position: fixed;
+  width: 15px;
+  height: 20px;
+  background: rgba(252, 23, 240, 0.9); /* kolor pył */
+  border-radius: 90%;
+  pointer-events: none;
+  animation: dust 0.8s ease-out forwards;
+}
+
 
 /* Klasy do zastosowania w JavaScript */
 .custom-zoom-in {
@@ -1012,7 +1028,7 @@
         </button>
       </div>
 
-      <h3>Formularz zamówienia</h3> <p id="current-week-display" style="font-weight: bold; color: #3f37c9; font-size: 18px; text-align: center;"></p>
+      <h3>♨️</h3> <p id="current-week-display" style="font-weight: bold; color: #3f37c9; font-size: 18px; text-align: center;"></p>
 
       <label for="order-week">Dni tygodnia:</label>
 
@@ -1045,15 +1061,15 @@
 
 <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; margin-bottom: 18px; padding-top: 5px;">
 
-    <h3 style="margin: 0;">Koszyk zamówień</h3>
+    <h3 style="margin: 0;">♨️</h3>
     
-    <div id="cart-summary-text" style="font-size: 16px; font-weight: 600; color: #3f37c9;">
+    <div id="cart-summary-text" style="font-size: 20px; font-weight: 600; color: #3f37c9;">
         Aktualne zamówienie wynosi obecnie: <span id="cart-total-price">0.00</span> zł
     </div>
 </div>
 
 <div id="order-cart">
-  <div id="cart-content">Koszyk jest pusty</div>
+  <div id="cart-content" style="text-align: center; padding: 10px 10px; font-family: Arial, serif;">Koszyk jest pusty</div>
 </div>
 
 <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -1077,9 +1093,9 @@
 </div>
         </form>
 
-      <h3>💾</h3>
+      <h3>♨️</h3>
       <button id="toggle-history" onclick="toggleHistory()" class="ripple">
-	<span style="font-size: 1.7em; margin-right: 5px;"> 📖 </span> Pokaż historię zamówień</button>
+	<span style="font-size: 1.7em; margin-right: 5px;"> 🛒 </span> Pokaż historię zamówień</button>
 
       <div id="order-history" class="history-container"></div>
      <div id="orderExistsMessage" style="display: none; color: red;">
@@ -1110,7 +1126,7 @@
     </div>
 </div>
         
-        <h3> ______________________________________ </h3>
+        <h3> ♨️ </h3>
         <div id="summary-details" style="margin-bottom: 20px;">
 
             <p><strong>Tydzień:</strong> <span id="summary-week"></span></p>

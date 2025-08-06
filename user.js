@@ -1046,52 +1046,88 @@ async function actuallySubmitCartOrder(week, deliveryLocation, shift) {
 
 
 function animateMealToCart(day, mealData, element) {
-    // 🔹 1. Pokaż komunikat od razu
     showAddingToCartMessage();
 
-    // 🔹 2. Znajdź ikonkę koszyka (cel animacji)
     const cartIcon = document.querySelector("#order-cart");
     if (!cartIcon) {
-        // Jeśli nie ma koszyka — dodaj od razu
         addMealToCart(day, mealData);
         return;
     }
 
-    // 🔹 3. Skopiuj wybrany element do animacji
+    // 🔹 Tworzymy emotkę
     const img = document.createElement("div");
-    img.textContent = "🍽️"; // Ikonka talerza — można zamienić na grafikę
+    img.textContent = "🥣"; 
     img.style.position = "fixed";
     img.style.zIndex = "2000";
-    img.style.fontSize = "24px";
+    img.style.fontSize = "100px"; 
     img.style.pointerEvents = "none";
+    img.style.filter = "drop-shadow(3px 5px 4px rgba(105, 191, 243,0.9))";
+    document.body.appendChild(img);
 
+    // Pozycja startowa
     const rect = element.getBoundingClientRect();
     img.style.left = `${rect.left}px`;
     img.style.top = `${rect.top}px`;
-    document.body.appendChild(img);
 
-    // 🔹 4. Pozycja celu
+    // 🔹 Smuga (co 50ms klon ikony, który znika)
+    const trailInterval = setInterval(() => {
+        const trail = img.cloneNode(true);
+        trail.style.fontSize = "60px";
+        trail.style.opacity = "0.6";
+        trail.style.transition = "opacity 0.5s, transform 0.5s";
+        document.body.appendChild(trail);
+
+        const imgRect = img.getBoundingClientRect();
+        trail.style.left = imgRect.left + "px";
+        trail.style.top = imgRect.top + "px";
+
+        requestAnimationFrame(() => {
+            trail.style.opacity = "0";
+            trail.style.transform = "scale(0.5)";
+        });
+
+        setTimeout(() => trail.remove(), 500);
+    }, 50);
+
+    // 🔹 Pozycja koszyka
     const cartRect = cartIcon.getBoundingClientRect();
     const targetX = cartRect.left + cartRect.width / 2;
     const targetY = cartRect.top + cartRect.height / 2;
 
-    // 🔹 5. Animacja lotu do koszyka
+    // 🔹 Animacja lotu
     img.animate([
         { transform: `translate(0, 0) scale(1)`, opacity: 1 },
         { transform: `translate(${targetX - rect.left}px, ${targetY - rect.top}px) scale(0.3)`, opacity: 0.5 }
     ], {
-        duration: 800,
+        duration: 960, // wolniej o 20%
         easing: "ease-in-out"
     }).onfinish = () => {
         img.remove();
+        clearInterval(trailInterval); // usuń smugę
 
-        // 🔹 6. Efekt „skoku koszyka”
+        // Efekt "bounce" koszyka
         cartIcon.classList.add("cart-bounce");
         setTimeout(() => {
             cartIcon.classList.remove("cart-bounce");
         }, 300);
 
-        // 🔹 7. Po zakończeniu animacji — faktycznie dodaj do koszyka
+        // 🔹 Efekt pyłu po wpadnięciu
+        for (let i = 0; i < 10; i++) {
+            const particle = document.createElement("div");
+            particle.className = "dust-particle";
+
+            const angle = Math.random() * 2 * Math.PI;
+            const distance = Math.random() * 30 + 10;
+            particle.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
+            particle.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
+
+            particle.style.left = targetX + "px";
+            particle.style.top = targetY + "px";
+
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 600);
+        }
+
         addMealToCart(day, mealData);
     };
 }
