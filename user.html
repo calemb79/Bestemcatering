@@ -134,16 +134,21 @@
     }
 
 #week-calendar {
-display: grid;
-  grid-template-columns: repeat(17, 1fr);
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); /* automatyczne dopasowanie */
+  gap: 5px;
   margin-top: 8px;
   background: #e9f1f2;
   padding: 10px;
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  max-width: 100%;
+  overflow-x: auto; /* przewijanie w poziomie jeśli trzeba */
 }
 
+#week-calendar > div {
+  min-width: 40px;
+}
 
  #loginMessage {
     margin-top: 10px;
@@ -293,8 +298,9 @@ display: grid;
 
   /* Zmniejszenie czcionek i rozmiarów pól */
   #delivery-location, #shift, #menu-container select {
-    font-size: 12px;
-    padding: 10px 12px;
+    font-size: 15px;
+    padding: 12px 14px;
+    font-weight: 600;
   }
   
   #user-panel label {
@@ -418,24 +424,8 @@ display: grid;
     width: 90px; /* stała szerokość */
 }
 
-  
-  .back-btn {
-    position: absolute;
-    top: 0;
-    right: 0;
-    background-color: var(--warning);
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-size: 14px;
-    width: auto;
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    z-index: 10;
-  }
-  
-  .back-btn:hover {
+    
+ .back-btn:hover {
     background-color: #e67300;
   }
   
@@ -488,10 +478,11 @@ display: grid;
   }
 
 .calendar-day-header {
+  padding: 8px;
   font-weight: bold;
   color: #887acb;
   text-align: center;
-  font-size: 12px;
+  font-size: 10px;
 }
 
 .calendar-day {
@@ -499,7 +490,7 @@ display: grid;
   text-align: center;
   border-radius: 10px;
   background: #dcf7f6;
-  font-size: 16px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -511,40 +502,36 @@ display: grid;
       position: relative;
       margin-bottom: 20px;
     }
+
 .header-buttons {
-    position: absolute;
-    top: 55px; /* Dopasuj w pionie wedle uznania */
-    right: 150px; /* Dopasuj w poziomie wedle uznania */
-    display: flex;
-    gap: 30px; /* Odstęp między przyciskami */
-    align-items: center;
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
-/* Ta reguła usuwa pozycjonowanie absolutne z przycisków, 
-  gdy są one wewnątrz nowego kontenera, aby mogły 
-  ułożyć się obok siebie.
-*/
-.header-buttons .logout-btn,
-.header-buttons .back-btn {
-    position: static;
-    margin-top: 0;
+/* Wspólny wygląd i wysokość dla przycisków nagłówka */
+.logout-btn,
+.back-btn {
+  height: 48px; /* równa wysokość */
+  min-width: 120px; /* równa minimalna szerokość */
+  padding: 0 20px;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
 }
 
-    .logout-btn {
-      position: absolute;
-      top: 0;
-      right: 0;
-      background-color: var(--danger);
-      padding: 10px 20px;
-      border-radius: 12px;
-      font-size: 14px;
-      width: auto;
-      margin: 0;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      z-index: 10;
-    }
+/* Ikony w przyciskach */
+.logout-btn svg,
+.back-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 
     .logout-btn:hover {
       background-color: #d1145a;
@@ -585,6 +572,16 @@ display: grid;
   z-index: 3000;
   opacity: 0;
   animation: fadeInOut 1.5s ease forwards;
+}
+
+@media (max-width: 600px) {
+  .header-buttons {
+    justify-content: center;
+  }
+  .logout-btn,
+  .back-btn {
+    flex: 1 1 100%;
+  }
 }
 
 @keyframes fadeInOut {
