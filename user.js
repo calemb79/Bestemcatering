@@ -3,6 +3,8 @@ let userOrders = [];
 let isHistoryVisible = false;
 let homeOrders = [];
 let isHomeOrderSectionVisible = false;
+let cartMeals = [];
+
 
 window.login = async function() {
   const login = document.getElementById("login").value;
@@ -32,6 +34,8 @@ window.login = async function() {
         document.getElementById("user-id").textContent = data.user_code || 'Brak kodu';
         
         document.getElementById("user-panel").style.display = "block";
+fetchCurrentWeekAndDisplay().then(updateOrderSummary);
+document.getElementById("order-week").addEventListener("change", updateOrderSummary);
         document.getElementById("user-panel").classList.add('animate__animated', 'animate__fadeInUp');
 if (document.getElementById('order-week').value) {
   updateWeekCalendar(document.getElementById('order-week').value);
@@ -64,6 +68,7 @@ async function loadOrderHistory() {
   try {
     const res = await fetch(`https://bestemcatering.onrender.com/order/history?username=${loggedInUser}`);
     userOrders = await res.json();
+    await 
     updateOrderSummary();
   } catch (error) {
     console.error("Błąd ładowania historii:", error);
@@ -73,24 +78,53 @@ async function loadOrderHistory() {
 function updateOrderSummary() {
   const summaryElement = document.getElementById("order-summary");
   const deductionInfo = document.getElementById("deduction-info");
-  let total = 0;
   
+  // Grupuj zamówienia według tygodni
+  const ordersByWeek = {};
   userOrders.forEach(order => {
-    order.meals.forEach(meal => {
-      total += parseFloat(meal.price);
-    });
+    if (!ordersByWeek[order.week]) {
+      ordersByWeek[order.week] = [];
+    }
+    ordersByWeek[order.week].push(order);
   });
+
+  let summaryHTML = '';
+  let deductionHTML = '';
   
-  summaryElement.classList.add('animate__animated', 'animate__pulse');
-  setTimeout(() => {
-    summaryElement.classList.remove('animate__animated', 'animate__pulse');
-  }, 1000);
+  // Przetwarzaj każdy tydzień osobno
+  for (const week in ordersByWeek) {
+    let weekTotal = 0;
+    
+    ordersByWeek[week].forEach(order => {
+      order.meals.forEach(meal => {
+        weekTotal += parseFloat(meal.price);
+      });
+    });
+    
+    // Dodaj podsumowanie dla tygodnia
+    summaryHTML += `<div class="week-summary">
+      <strong>${week}:</strong> ${weekTotal.toFixed(2)} zł
+    </div>`;
+    
+    // Sprawdź przekroczenie dofinansowania dla tygodnia
+    if (weekTotal > 55) {
+      const difference = weekTotal - 55;
+      deductionHTML += `<div class="week-deduction">
+        <strong>${week}:</strong> Przekroczenie o ${difference.toFixed(2)} zł
+      </div>`;
+    }
+  }
   
-  summaryElement.textContent = `Suma tygodniowych zamówień: ${total.toFixed(2)} zł`;
+  // Jeśli nie ma zamówień, pokaż domyślny tekst
+  if (summaryHTML === '') {
+    summaryHTML = 'Suma tygodniowych zamówień: 0.00 zł';
+  }
   
-  if (total > 55) {
-    const difference = total - 55;
-    deductionInfo.textContent = `Przekroczenie dofinansowania o: ${difference.toFixed(2)} zł`;
+  // Aktualizuj elementy DOM
+  summaryElement.innerHTML = summaryHTML;
+  
+  if (deductionHTML !== '') {
+    deductionInfo.innerHTML = deductionHTML;
     deductionInfo.style.display = "block";
     deductionInfo.classList.add('animate__animated', 'animate__pulse');
   } else {
@@ -148,14 +182,17 @@ async function loadMenu() {
       const select = document.createElement("select");
       select.name = day;
       select.classList.add('ripple');
-      select.addEventListener('change', updateOrderPreview);
+      select.addEventListener('change', function() {
+        if (this.value) {
+          animateMealToCart(day, this.value, this);
+        }
+      });
 
       const defaultOption = document.createElement("option");
       defaultOption.text = "Wybierz danie";
       defaultOption.value = "";
       select.appendChild(defaultOption);
 
-      // Filtruj dania tylko dla danego dnia
       const dayMenuItems = menuItems.filter(item => item.day === day);
       
       dayMenuItems.forEach(item => {
@@ -170,14 +207,39 @@ async function loadMenu() {
       container.appendChild(groupDiv);
     });
     
-    updateOrderPreview();
+    // TUTAJ NIE WYWOŁUJEMY JUŻ updateOrderPreview()
   } catch (error) {
     console.error("Błąd ładowania menu:", error);
   }
 }
 
+async function fetchCurrentWeekAndDisplay() {
+  try {
+    const response = await fetch("https://bestemcatering.onrender.com/current_week");
+    if (!response.ok) throw new Error("Brak tygodnia");
+    const data = await response.json();
+    const week = data.week;
+
+    const display = document.getElementById("current-week-display");
+    if (display) {
+      display.textContent = "Aktualny tydzień zamówień: " + week;
+    }
+
+    // Ustaw też ukryty input, jeśli jesteś w user.html
+    const hiddenWeekInput = document.getElementById("order-week");
+    if (hiddenWeekInput) {
+      hiddenWeekInput.value = week;
+    }
+	updateWeekCalendar(week);
+
+  } catch (err) {
+    console.error("Błąd pobierania tygodnia:", err);
+  }
+}
+
+
 async function submitOrder() {
-  const week = document.getElementById("order-week").value;
+  const week = await fetchCurrentWeek();
   const deliveryLocation = document.getElementById("delivery-location").value;
   const shift = document.getElementById("shift").value; // Pobierz wartość zmiany
   const selects = document.querySelectorAll("#menu-container select");
@@ -267,6 +329,20 @@ async function submitOrder() {
   }
 }
 
+
+async function fetchCurrentWeek() {
+  try {
+    const response = await fetch("https://bestemcatering.onrender.com/current_week");
+    if (!response.ok) throw new Error("Brak ustawionego tygodnia");
+    const data = await response.json();
+    return data.week;
+  } catch (error) {
+    console.error("Błąd pobierania tygodnia:", error);
+    return "Nie ustawiono";
+  }
+}
+
+
 async function toggleHistory() {
   const button = document.getElementById("toggle-history");
   const container = document.getElementById("order-history");
@@ -348,111 +424,122 @@ if (userOrders.length > 0) {
 }
 
 function logout() {
-  document.getElementById("user-panel").classList.add('animate__animated', 'animate__fadeOut');
-  document.querySelector(".logout-btn").classList.add('animate__animated', 'animate__fadeOut');
-  
-  setTimeout(() => {
-    loggedInUser = "";
-    isHistoryVisible = false;
-    userOrders = [];
+    document.getElementById("user-panel").classList.add('animate__animated', 'animate__fadeOut');
+    document.getElementById("order-summary-section").classList.add('animate__animated', 'animate__fadeOut');
+    document.querySelectorAll(".logout-btn").forEach(btn => {
+        btn.classList.add('animate__animated', 'animate__fadeOut');
+    });
+    
+    setTimeout(() => {
+        loggedInUser = "";
+        isHistoryVisible = false;
+        userOrders = [];
+        cartMeals = [];
 
-    document.getElementById("login-section").style.display = "block";
-    document.getElementById("login-section").classList.add('animate__animated', 'animate__fadeIn');
-    document.getElementById("user-panel").style.display = "none";
-    document.getElementById("user-panel").classList.remove('animate__animated', 'animate__fadeOut');
-    document.querySelector(".logout-btn").style.display = "none";
+        document.getElementById("login-section").style.display = "block";
+        document.getElementById("login-section").classList.add('animate__animated', 'animate__fadeIn');
+        document.getElementById("user-panel").style.display = "none";
+        document.getElementById("order-summary-section").style.display = "none";
+        document.getElementById("user-panel").classList.remove('animate__animated', 'animate__fadeOut');
+        document.getElementById("order-summary-section").classList.remove('animate__animated', 'animate__fadeOut');
+        document.querySelectorAll(".logout-btn").forEach(btn => {
+            btn.style.display = "none";
+        });
 
-    document.getElementById("login").value = "";
-    document.getElementById("password").value = "";
+        document.getElementById("login").value = "";
+        document.getElementById("password").value = "";
 
-    document.getElementById("user-name").textContent = "";
-    document.getElementById("menu-container").innerHTML = "";
-    document.getElementById("order-history").innerHTML = "";
-    document.getElementById("order-summary").textContent = "Suma zamówień: 0.00 zł";
-    document.getElementById("deduction-info").style.display = "none";
+        document.getElementById("user-name").textContent = "";
+        document.getElementById("menu-container").innerHTML = "";
+        document.getElementById("order-history").innerHTML = "";
+        document.getElementById("order-summary").textContent = "Suma zamówień: 0.00 zł";
+        document.getElementById("deduction-info").style.display = "none";
 
-    // fetch do wylogowania
-    fetch("https://bestemcatering.onrender.com/logout", { 
-      method: "POST",
-      credentials: 'include'
-    })
-      .then(response => response.json())
-      .then(data => {
-        showSuccess("Wylogowano pomyślnie");
-      })
-      .catch(error => showError("Błąd wylogowania"));
+        fetch("https://bestemcatering.onrender.com/logout", { 
+            method: "POST",
+            credentials: 'include'
+        })
+            .then(response => response.json())
+            .then(data => {
+                showSuccess("Wylogowano pomyślnie");
+            })
+            .catch(error => showError("Błąd wylogowania"));
 
-  }, 500);
+    }, 500);
 }
 
+function showAddingToCartMessage() {
+  const msg = document.createElement("div");
+  msg.className = "adding-to-cart-message";
+  msg.textContent = "Dodawanie dania do koszyka...";
+  document.body.appendChild(msg);
+
+  setTimeout(() => {
+    msg.remove();
+  }, 1500); // usunięcie po 1,5 sekundy
+}
+
+
 function showError(message) {
+  // 1. Wrapper do centrowania
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
+
+  // 2. Wewnętrzny box z treścią i animacją
   const errorDiv = document.createElement('div');
-  errorDiv.className = 'error-message animate__animated animate__fadeIn';
-  errorDiv.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: var(--danger);
-    color: white;
-    padding: 15px 25px;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    z-index: 1000; font-size: 1.3em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  `;
+  errorDiv.className = 'message-box error animate__animated animate__fadeIn';
   
   errorDiv.innerHTML = `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
       <line x1="12" y1="9" x2="12" y2="13"></line>
       <line x1="12" y1="17" x2="12.01" y2="17"></line>
     </svg>
-    🚨🤔${message}🤔🚨
+    <span>${message}</span>
   `;
   
-  document.body.appendChild(errorDiv);
+  // 3. Złożenie i dodanie do body
+  wrapper.appendChild(errorDiv);
+  document.body.appendChild(wrapper);
   
+  // 4. Usunięcie po czasie
   setTimeout(() => {
+    errorDiv.classList.remove('animate__fadeIn');
     errorDiv.classList.add('animate__fadeOut');
-    setTimeout(() => errorDiv.remove(), 500);
-  }, 4000);
+    errorDiv.addEventListener('animationend', () => {
+        wrapper.remove(); // Usuwamy cały wrapper
+    }, { once: true });
+  }, 3000);
 }
 
 function showSuccess(message) {
+  // 1. Wrapper do centrowania
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
+  
+  // 2. Wewnętrzny box z treścią i animacją
   const successDiv = document.createElement('div');
-  successDiv.className = 'success-message animate__animated animate__fadeIn';
-  successDiv.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: var(--success);
-    color: white;
-    padding: 15px 25px;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    z-index: 1000; font-size: 1.3em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  `;
+  successDiv.className = 'message-box success animate__animated animate__fadeIn';
   
   successDiv.innerHTML = `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
       <polyline points="22 4 12 14.01 9 11.01"></polyline>
     </svg>
-    🎉🤩${message}🤩🎉
+    <span>${message}</span>
   `;
   
-  document.body.appendChild(successDiv);
+  // 3. Złożenie i dodanie do body
+  wrapper.appendChild(successDiv);
+  document.body.appendChild(wrapper);
   
+  // 4. Usunięcie po czasie
   setTimeout(() => {
+    successDiv.classList.remove('animate__fadeIn');
     successDiv.classList.add('animate__fadeOut');
-    setTimeout(() => successDiv.remove(), 500);
+    successDiv.addEventListener('animationend', () => {
+        wrapper.remove(); // Usuwamy cały wrapper
+    }, { once: true });
   }, 4000);
 }
 
@@ -490,27 +577,14 @@ function updateWeekCalendar(weekString) {
     
     const [year, weekNum] = weekString.split('-W').map(Number);
     
-    if (isNaN(year)) throw new Error("Invalid year"); // Dodano brakujący nawias
-    if (isNaN(weekNum)) throw new Error("Invalid week");
-    
-    // Tworzymy datę dla pierwszego dnia roku
-    const date = new Date(year, 0, 1);
-    
-    // Znajdź pierwszy czwartek roku (ISO week date)
-    while (date.getDay() !== 4) {
-      date.setDate(date.getDate() + 1);
+    // Oblicz datę dla pierwszego dnia tygodnia (poniedziałek)
+    const date = new Date(year, 0, 1 + (weekNum - 1) * 7);
+    while (date.getDay() !== 1) {
+      date.setDate(date.getDate() - 1);
     }
     
-    // Przesuń się do wybranego tygodnia
-    date.setDate(date.getDate() + (weekNum - 1) * 7);
-    
-    // Cofnij się do poniedziałku
-    date.setDate(date.getDate() - 3);
-    
-    // Nagłówki dni i daty
     const days = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd'];
     
-    // Wyświetl dni tygodnia z datami
     for (let i = 0; i < 7; i++) {
       // Nagłówek dnia
       const dayHeader = document.createElement('div');
@@ -520,7 +594,7 @@ function updateWeekCalendar(weekString) {
       
       // Dzień z datą
       const dayElement = document.createElement('div');
-      dayElement.className = 'calendar-day selected';
+      dayElement.className = 'calendar-day';
       dayElement.textContent = date.getDate();
       calendar.appendChild(dayElement);
       
@@ -596,13 +670,13 @@ async function fetchLoginMessage() {
     if (data.text) {
       messageElement.textContent = data.text;
       
-      // Dodajemy efekt pulsowania co 5 sekund
+      // Dodajemy efekt pulsowania co 3 sekund
       setInterval(() => {
         messageElement.classList.add('animate__animated', 'animate__pulse');
         setTimeout(() => {
           messageElement.classList.remove('animate__animated', 'animate__pulse');
         }, 1000);
-      }, 5000);
+      }, 3000);
     }
     
   } catch (error) {
@@ -624,6 +698,8 @@ function showHomeOrderSection() {
 function hideHomeOrderSection() {
   document.getElementById("home-order-section").style.display = "none";
   document.getElementById("user-panel").style.display = "block";
+fetchCurrentWeekAndDisplay().then(updateOrderSummary);
+document.getElementById("order-week").addEventListener("change", updateOrderSummary);
   isHomeOrderSectionVisible = false;
 }
 
@@ -771,32 +847,348 @@ async function loadHomeOrderHistory() {
   try {
     const res = await fetch(`https://bestemcatering.onrender.com/order/history?username=${loggedInUser}`);
     const allOrders = await res.json();
-    
-    // Filter only home orders (where week is "Domowe")
-    homeOrders = allOrders.filter(order => order.week === "Domowe");
-    
+
+    console.log(allOrders);  // <-- Dodaj to by sprawdzić dane z serwera
+
+    // Zmieniamy filtrację na date_range
+    homeOrders = allOrders.filter(order => order.date_range === "Dom");
+
     const container = document.getElementById("home-order-history");
     container.innerHTML = "";
-    
+
+    if (homeOrders.length === 0) {
+      container.innerHTML = "<p>Brak zamówień domowych.</p>";
+      return;
+    }
+
     homeOrders.forEach((order, index) => {
       const div = document.createElement("div");
-      div.classList.add('order-item', 'animate__animated', 'animate__fadeIn');
+      div.classList.add('order-item', 'home-order', 'animate__animated', 'animate__fadeIn');
       div.style.animationDelay = `${index * 0.1}s`;
+
+      const icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>`;
+
       div.innerHTML = `
         <div class="order-header">
-          <strong>Data zamówienia:</strong> ${new Date(order.timestamp).toLocaleString()}
+          ${icon}
+          <strong>Tydzień:</strong> ${order.week} 
+          ${order.date_range ? `(${order.date_range})` : ''}<br>
+          ${order.shift ? `<strong>Zmiana:</strong> ${order.shift}` : ''}
         </div>
         <div class="order-meals">
-          <strong>Pozycje:</strong>
+          <strong>Zamówione posiłki:</strong>
           <ul>
             ${order.meals.map(meal => `<li>${meal.day}: ${meal.name} (${meal.price} zł)</li>`).join("")}
           </ul>
         </div>
-        <hr>
+        <hr class="order-divider">
       `;
       container.appendChild(div);
     });
   } catch (error) {
     console.error("Błąd ładowania historii zamówień domowych:", error);
   }
+}
+
+function addMealToCart(day, mealData) {
+    const { name, price } = JSON.parse(mealData);
+    const existingMealIndex = cartMeals.findIndex(meal => meal.day === day);
+    
+    if (existingMealIndex > -1) {
+        cartMeals[existingMealIndex] = { day, name, price };
+    } else {
+        cartMeals.push({ day, name, price });
+    }
+    
+    updateCartDisplay();
+}
+
+function updateCartDisplay(isSummaryPage = false) {
+  const cartContent = document.getElementById("cart-content");
+
+  if (cartMeals.length === 0) {
+    cartContent.innerHTML = "<p>Koszyk jest pusty</p>";
+    document.getElementById("summary-btn").disabled = true;
+    document.getElementById("submit-cart-btn").style.display = "none";
+    const cartHeader = document.querySelector("#order-cart h4");
+    if (cartHeader) {
+      cartHeader.innerHTML = "Aktualne zamówienie";
+    }
+    return;
+  }
+
+  // Grupowanie identycznych dań wg dnia i nazwy
+  const groupedMeals = {};
+  cartMeals.forEach(meal => {
+    const key = `${meal.day}-${meal.name}`;
+    if (!groupedMeals[key]) {
+      groupedMeals[key] = { ...meal, count: 0 };
+    }
+    groupedMeals[key].count++;
+  });
+
+  const mealsList = Object.values(groupedMeals);
+  let total = mealsList.reduce((sum, meal) => sum + parseFloat(meal.price) * meal.count, 0);
+
+  // Aktualizacja tekstu obok nagłówka
+const totalPriceElement = document.getElementById("cart-total-price");
+if (totalPriceElement) {
+    totalPriceElement.textContent = total.toFixed(2);
+}
+
+
+  cartContent.innerHTML = `
+    <ul style="margin-top: 10px;">
+      ${mealsList.map((meal, index) => `
+        <li style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span><strong>${meal.day}:</strong> ${meal.name} (${meal.price} zł)</span>
+          ${isSummaryPage ? `<button onclick="removeMealFromCart(${index})" class="delete-btn-custom">Usuń</button>` : ""}
+        </li>
+      `).join("")}
+    </ul>
+  `;
+
+  document.getElementById("summary-btn").disabled = false;
+  document.getElementById("submit-cart-btn").style.display = isSummaryPage ? "block" : "none";
+}
+
+
+function removeMealFromCart(index) {
+  cartMeals.splice(index, 1);
+  updateCartDisplay();
+}
+
+async function submitCartOrder() {
+  const week = await fetchCurrentWeek();
+  const deliveryLocation = document.getElementById("delivery-location").value;
+  const shift = document.getElementById("shift").value;
+
+  if (!week) return showError("Proszę wybrać tydzień zamówienia!");
+  if (!deliveryLocation) return showError("Proszę wybrać miejsce dostawy!");
+  if (!shift) return showError("Proszę wybrać zmianę!");
+  if (cartMeals.length === 0) return showError("Koszyk jest pusty!");
+
+  // 🔹 Zbierz wszystkie dni, które już mają zamówienie
+  const alreadyOrderedDays = cartMeals
+    .map(meal => meal.day)
+    .filter((day, index, self) => self.indexOf(day) === index) // unikalne dni
+    .filter(day =>
+      userOrders.some(order =>
+        order.week === week &&
+        order.meals.some(m => m.day === day)
+      )
+    );
+
+  if (alreadyOrderedDays.length > 0) {
+    showWarningConfirm(
+      `Zamówienie na poniższe dni zostało już przyjęte:<br><strong>${alreadyOrderedDays.join(", ")}</strong><br><br>Czy chcesz ponownie złożyć zamówienie?`,
+      async () => { // ✅ Tak
+        await actuallySubmitCartOrder(week, deliveryLocation, shift);
+      },
+      () => { // ❌ Nie
+        showError("Anulowano składanie zamówienia.");
+      }
+    );
+    return;
+  }
+
+  // Jeśli brak kolizji – składamy od razu
+  await actuallySubmitCartOrder(week, deliveryLocation, shift);
+}
+
+
+// 🔹 Wyciągnięta logika wysyłania zamówienia
+async function actuallySubmitCartOrder(week, deliveryLocation, shift) {
+  const meals = {};
+  cartMeals.forEach(meal => {
+    if (!meals[meal.day]) meals[meal.day] = [];
+    meals[meal.day].push({ name: meal.name, price: meal.price, day: meal.day });
+  });
+
+  const payload = {
+    username: loggedInUser,
+    week: week,
+    date_range: deliveryLocation,
+    shift: shift,
+    meals: meals
+  };
+
+  const submitBtn = document.getElementById("submit-cart-btn"); 
+  submitBtn.innerHTML = '<span class="loader"></span> Przetwarzanie...';
+  submitBtn.disabled = true;
+
+  try {
+    const response = await fetch("https://bestemcatering.onrender.com/order/weekly", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      showSuccess("Zamówienie złożone pomyślnie!");
+      cartMeals = [];
+      updateCartDisplay();
+      loadOrderHistory();
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Nie udało się złożyć zamówienia");
+    }
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    submitBtn.innerHTML = 'Złóż zamówienie';
+    submitBtn.disabled = false;
+  }
+}
+
+
+function animateMealToCart(day, mealData, element) {
+    // 🔹 1. Pokaż komunikat od razu
+    showAddingToCartMessage();
+
+    // 🔹 2. Znajdź ikonkę koszyka (cel animacji)
+    const cartIcon = document.querySelector("#order-cart");
+    if (!cartIcon) {
+        // Jeśli nie ma koszyka — dodaj od razu
+        addMealToCart(day, mealData);
+        return;
+    }
+
+    // 🔹 3. Skopiuj wybrany element do animacji
+    const img = document.createElement("div");
+    img.textContent = "🍽️"; // Ikonka talerza — można zamienić na grafikę
+    img.style.position = "fixed";
+    img.style.zIndex = "2000";
+    img.style.fontSize = "24px";
+    img.style.pointerEvents = "none";
+
+    const rect = element.getBoundingClientRect();
+    img.style.left = `${rect.left}px`;
+    img.style.top = `${rect.top}px`;
+    document.body.appendChild(img);
+
+    // 🔹 4. Pozycja celu
+    const cartRect = cartIcon.getBoundingClientRect();
+    const targetX = cartRect.left + cartRect.width / 2;
+    const targetY = cartRect.top + cartRect.height / 2;
+
+    // 🔹 5. Animacja lotu do koszyka
+    img.animate([
+        { transform: `translate(0, 0) scale(1)`, opacity: 1 },
+        { transform: `translate(${targetX - rect.left}px, ${targetY - rect.top}px) scale(0.3)`, opacity: 0.5 }
+    ], {
+        duration: 800,
+        easing: "ease-in-out"
+    }).onfinish = () => {
+        img.remove();
+
+        // 🔹 6. Efekt „skoku koszyka”
+        cartIcon.classList.add("cart-bounce");
+        setTimeout(() => {
+            cartIcon.classList.remove("cart-bounce");
+        }, 300);
+
+        // 🔹 7. Po zakończeniu animacji — faktycznie dodaj do koszyka
+        addMealToCart(day, mealData);
+    };
+}
+
+
+function showWarningConfirm(message, onConfirm, onCancel) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message-wrapper';
+
+  const box = document.createElement('div');
+  box.className = 'message-box warning animate__animated animate__fadeIn';
+  box.innerHTML = `
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+      <line x1="12" y1="9" x2="12" y2="13"></line>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+    <span style="font-size: 1.1em;">${message}</span>
+    <div style="display:flex; gap:10px; margin-top:15px;">
+      <button id="confirm-yes" style="background-color:var(--success); color:white; border:none; padding:8px 16px; border-radius:8px;">Tak</button>
+      <button id="confirm-no" style="background-color:var(--danger); color:white; border:none; padding:8px 16px; border-radius:8px;">Nie</button>
+    </div>
+  `;
+
+  wrapper.appendChild(box);
+  document.body.appendChild(wrapper);
+
+  document.getElementById('confirm-yes').addEventListener('click', () => {
+    wrapper.remove();
+    if (onConfirm) onConfirm();
+  });
+
+  document.getElementById('confirm-no').addEventListener('click', () => {
+    wrapper.remove();
+    if (onCancel) onCancel();
+  });
+}
+
+
+
+function showOrderSummary() {
+    // Wypełnij dane w podsumowaniu
+    document.getElementById("summary-week").textContent = document.getElementById("order-week").value;
+    document.getElementById("summary-location").textContent = document.getElementById("delivery-location").value;
+    document.getElementById("summary-shift").textContent = document.getElementById("shift").value;
+    
+    // Pokazujemy przycisk "Złóż zamówienie" tylko w podsumowaniu
+    document.getElementById("submit-order-btn").style.display = "block";
+    
+    // Skopiuj zawartość koszyka do podsumowania z funkcją usuwania
+    const summaryCart = document.getElementById("summary-cart");
+    summaryCart.innerHTML = `
+        <h4>Podsumowanie dań zamawianych na kolejny tydzień:</h4>
+        <div id="summary-cart-content">
+            ${cartMeals.length === 0 ? '<p>Koszyk jest pusty</p>' : `
+                <ul style="margin-top: 10px;">
+                    ${cartMeals.map((meal, index) => `
+                        <li style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <span><strong>${meal.day}:</strong> ${meal.name} (${meal.price} zł)</span>
+                            <button onclick="removeMealFromCart(${index}, true)" class="delete-btn-custom">Usuń</button>
+                        </li>
+                    `).join("")}
+                </ul>
+                <strong style="display: block; margin-top: 10px; text-align: right;">
+                    Suma: ${cartMeals.reduce((sum, meal) => sum + parseFloat(meal.price), 0).toFixed(2)} zł
+                </strong>
+            `}
+        </div>
+    `;
+    
+    // Ukryj panel użytkownika, pokaż podsumowanie
+    document.getElementById("user-panel").style.display = "none";
+    document.getElementById("order-summary-section").style.display = "block";
+    updateCartDisplay(true);
+}
+
+function hideOrderSummary() {
+    // Ukryj podsumowanie, pokaż panel użytkownika
+    document.getElementById("order-summary-section").style.display = "none";
+    document.getElementById("user-panel").style.display = "block";
+    fetchCurrentWeekAndDisplay().then(updateOrderSummary);
+    document.getElementById("order-week").addEventListener("change", updateOrderSummary);
+    
+    // Ukrywamy przycisk "Złóż zamówienie" gdy wracamy do głównego panelu
+    document.getElementById("submit-order-btn").style.display = "none";
+    updateCartDisplay(false); 
+}
+
+// Zmodyfikowana funkcja usuwania, która działa na obu stronach
+function removeMealFromCart(index, fromSummary = false) {
+    cartMeals.splice(index, 1);
+    
+    if (fromSummary) {
+        // Jeśli usuwamy z podsumowania, zaktualizuj tylko podsumowanie
+        showOrderSummary();
+    } else {
+        // Jeśli usuwamy z głównego panelu, zaktualizuj koszyk
+        updateCartDisplay(false);
+    }
 }

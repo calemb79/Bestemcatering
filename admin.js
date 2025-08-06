@@ -90,6 +90,7 @@ function login() {
         document.getElementById("admin-panel").classList.add('animate__animated', 'animate__fadeIn');
         
         loadMenu();
+	 fetchCurrentWeekAndDisplay(); 
         showNotification("Zalogowano pomyślnie", 'success');
       }, 500);
     })
@@ -295,6 +296,30 @@ function editUserPrompt(username, currentCode) {
   row.parentNode.insertBefore(formRow, row.nextSibling);
 }
 
+async function fetchCurrentWeekAndDisplay() {
+  try {
+    const response = await fetch("https://bestemcatering.onrender.com/current_week");
+    if (!response.ok) throw new Error("Brak tygodnia");
+    const data = await response.json();
+    const week = data.week;
+
+    const display = document.getElementById("current-week-display");
+    if (display) {
+      display.textContent = "Aktualny tydzień zamówień: " + week;
+    }
+
+    // Ustaw też ukryty input, jeśli jesteś w user.html
+    const hiddenWeekInput = document.getElementById("order-week");
+    if (hiddenWeekInput) {
+      hiddenWeekInput.value = week;
+    }
+
+  } catch (err) {
+    console.error("Błąd pobierania tygodnia:", err);
+  }
+}
+
+
 async function saveUserChanges(oldUsername) {
   const newUsername = document.getElementById('edit-username').value.trim();
   const newUserCode = document.getElementById('edit-user-code').value.trim();
@@ -328,6 +353,32 @@ async function saveUserChanges(oldUsername) {
     showNotification(error.message, 'error');
   }
 }
+
+function setActiveWeek() {
+  const week = document.getElementById("admin-week-input").value;
+  if (!week) {
+    showNotification("Proszę wybrać tydzień", 'error');
+    return;
+  }
+
+  fetch("https://bestemcatering.onrender.com/admin/set_week", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ week, admin_username: loggedInUser })
+  })
+  .then(res => res.json())
+  .then(data => {
+    showNotification("Tydzień ustawiony pomyślnie", 'success');
+
+    // 🔹 Nowe – odświeżenie wyświetlanego tygodnia bez przeładowania strony
+    fetchCurrentWeekAndDisplay();
+  })
+  .catch(error => {
+    showNotification("Błąd ustawiania tygodnia", 'error');
+  });
+}
+
+
 
 function filterUsersTable(searchTerm) {
   const table = document.getElementById("users-table");
@@ -519,6 +570,8 @@ async function saveEditedDish() {
     showNotification("Wypełnij wszystkie pola", 'error');
     return;
   }
+
+
 
   try {
     const response = await fetch("https://bestemcatering.onrender.com/menu/update", {

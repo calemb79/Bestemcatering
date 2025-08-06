@@ -25,6 +25,54 @@
       box-sizing: border-box;
       transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
+    
+    /* NOWE STYLE DLA KOMUNIKATÓW */
+
+    /* Wrapper (opakowanie) do centrowania */
+    .message-wrapper {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2000; /* Wysoki z-index, aby było na wierzchu */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    /* Wewnętrzny box z wyglądem i treścią */
+    .message-box {
+        color: white;
+        padding: 25px 35px;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+        font-size: clamp(1.1rem, 4vw, 1.4rem); /* Responsywna czcionka */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        text-align: center;
+        max-width: 90vw; /* Maksymalna szerokość względem ekranu */
+    }
+
+    .message-box.error {
+        background-color: var(--danger);
+    }
+
+    .message-box.success {
+        background-color: var(--success);
+    }
+    
+    .message-box.warning {
+     background-color: #f7ad00;
+     opacity: 0.7;
+     color: white;
+     font-size: 0.85rem; /* mniejsza czcionka */
+     padding: 11px 15px; /* mniejszy padding */
+    }
+
+
+
 
     body {
       font-family: 'Inter', sans-serif;
@@ -86,15 +134,16 @@
     }
 
 #week-calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  margin-top: 15px;
-  background: white;
+display: grid;
+  grid-template-columns: repeat(17, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+  background: #e9f1f2;
   padding: 10px;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
 }
+
 
  #loginMessage {
     margin-top: 10px;
@@ -103,11 +152,11 @@
     text-align: center;
     padding: 20px;
     border-radius: 18px;
-    background-color: rgba(74, 214, 109, 0.1);
+    background-color: rgba(182, 239, 245, 0.2);
     animation: 
       pulse 1s infinite,
       fadeIn 1s ease-out;
-    box-shadow: 0 2px 15px rgba(74, 214, 109, 0.2);
+    box-shadow: 0 2px 15px rgba(45, 212, 245, 0.6);
   }
 
   @keyframes pulse {
@@ -115,6 +164,42 @@
     50% { transform: scale(1.02); }
     100% { transform: scale(1); }
   }
+
+/* W pliku CSS */
+@keyframes customZoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.7); /* Zaczyna od 70% wielkości */
+    }
+    to {
+        opacity: 1;
+        transform: scale(1.3); /* Kończy na 130% wielkości, dając efekt "wyjścia" */
+    }
+}
+
+@keyframes customZoomOut {
+    from {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.1); /* Zmniejsza się do 10% */
+    }
+}
+
+/* Klasy do zastosowania w JavaScript */
+.custom-zoom-in {
+    animation-name: customZoomIn;
+    animation-duration: 0.3s; /* Czas trwania animacji */
+    animation-fill-mode: forwards;
+}
+
+.custom-zoom-out {
+    animation-name: customZoomOut;
+    animation-duration: 3s;
+    animation-fill-mode: forwards;
+}
 
 #home-order-btn {
     margin-bottom: 20px;
@@ -130,6 +215,8 @@
 #home-menu-container .menu-group {
   transition: all 0.3s ease;
 }
+
+
 
 #home-menu-container .menu-group:hover {
   transform: translateY(-3px);
@@ -158,6 +245,34 @@
   -webkit-text-fill-color: transparent;
 }
 
+#order-summary-section {
+    will-change: transform;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15),
+                0 15px 20px rgba(0, 0, 0, 0.1),
+                0 5px 5px rgba(0, 0, 0, 0.05),
+                inset 0 -2px 5px rgba(0, 0, 0, 0.05),
+                inset 0 2px 5px rgba(255, 255, 255, 0.8);
+    padding: 40px;
+    margin-top: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+    transform-style: preserve-3d;
+    perspective: 1000px;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+}
+
+#order-summary-section:hover {
+    transform: translateY(-5px) rotateX(2deg) rotateY(1deg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2),
+                0 25px 30px rgba(0, 0, 0, 0.15),
+                0 10px 10px rgba(0, 0, 0, 0.1),
+                inset 0 -3px 8px rgba(0, 0, 0, 0.1),
+                inset 0 3px 8px rgba(255, 255, 255, 0.9);
+}
+
 #home-order-section {
   background: rgba(255, 255, 255, 0.98); /* Białe tło z lekką przeźroczystością */
   border: 2px solid var(--success); /* Zielona ramka */
@@ -173,6 +288,134 @@
 
 #home-order-section button:hover {
   background-color: #16A3C4;
+}
+
+
+  /* Zmniejszenie czcionek i rozmiarów pól */
+  #delivery-location, #shift, #menu-container select {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+  
+  #user-panel label {
+    font-size: 12px;
+    margin-top: 5px;
+  }
+  
+  /* Stylowanie koszyka zamówień */
+  #order-cart {
+    background-color: #f2f7f7;
+    border: 1px solid #dff3f5;
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 15px;
+    font-size: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  
+ #order-cart h4 {
+  padding: 10px;
+  margin: 0;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+  font-size: 16px;
+  color: var(--primary); /* Zmiana z var(--dark) na var(--primary) */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+#order-cart h4 span {
+  color: var(--primary); /* Zapewnia spójność koloru */
+  
+}
+
+#order-cart ul {
+  padding: 10px;
+  margin: 0;
+  list-style-type: none;
+  
+}
+
+#order-cart li {
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+#order-cart li:hover {
+  background-color: #e9ecef;
+ 
+}
+  
+  #order-cart button {
+    font-size: 12px;
+    padding: 3px 8px;
+    width: auto;
+    margin-top: 0;
+    margin-left: 10px;
+    background-color: #ff6666;
+    box-shadow: 0 2px 8px rgba(0,0,0,1.5);	
+  }
+  
+  #order-cart strong {
+    display: block;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #ccc;
+  }
+  
+  /* Mniejszy przycisk podsumowania */
+  #summary-btn, #submit-cart-btn {
+    background-color: var(--success) !important;
+    font-size: 18px;
+    padding: 12px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5); /* taki jak koszyk */
+  }
+
+#summary-btn:hover {
+  background-color: #31ADA5 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,2.5); /* taki jak koszyk */
+}
+
+#submit-order-btn {
+  background-color: var(--success) !important;
+    font-size: 18px;
+    padding: 12px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5); /* taki jak koszyk */
+}
+
+#submit-order-btn:hover {
+  background-color: #31ADA5 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,2.5);
+}
+
+#summary-cart ul {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#summary-cart li {
+    display: table-row;
+}
+
+#summary-cart li > span,
+#summary-cart li > button {
+    display: table-cell;
+    padding: 8px 5px;
+    vertical-align: middle;
+}
+
+#summary-cart li > span {
+    text-align: left; /* danie po lewej */
+}
+
+#summary-cart li > button {
+    text-align: center; /* przycisk na środku */
+    width: 90px; /* stała szerokość */
 }
 
   
@@ -201,7 +444,7 @@
   padding: 15px;
   border-radius: 10px;
   background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .order-item.work-order {
@@ -246,17 +489,17 @@
 
 .calendar-day-header {
   font-weight: bold;
-  color: var(--secondary);
+  color: #887acb;
   text-align: center;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .calendar-day {
   padding: 8px;
   text-align: center;
-  border-radius: 8px;
-  background: #f0f0f0;
-  font-size: 14px;
+  border-radius: 10px;
+  background: #dcf7f6;
+  font-size: 16px;
   font-weight: 500;
 }
 
@@ -268,6 +511,24 @@
       position: relative;
       margin-bottom: 20px;
     }
+.header-buttons {
+    position: absolute;
+    top: 55px; /* Dopasuj w pionie wedle uznania */
+    right: 150px; /* Dopasuj w poziomie wedle uznania */
+    display: flex;
+    gap: 30px; /* Odstęp między przyciskami */
+    align-items: center;
+}
+
+/* Ta reguła usuwa pozycjonowanie absolutne z przycisków, 
+  gdy są one wewnątrz nowego kontenera, aby mogły 
+  ułożyć się obok siebie.
+*/
+.header-buttons .logout-btn,
+.header-buttons .back-btn {
+    position: static;
+    margin-top: 0;
+}
 
     .logout-btn {
       position: absolute;
@@ -289,13 +550,70 @@
       background-color: #d1145a;
     }
 
+.delete-btn-custom {
+    background-color: #ff4d4f; /* intensywny czerwony */
+    color: white;
+    border: none;
+    padding: 1px 6px; /* mniejszy rozmiar */
+    border-radius: 8px; /* bardziej zaokrąglone rogi */
+    font-size: 16px; /* mniejsza czcionka */
+    cursor: pointer;
+    width: 150px; /* stała szerokość - możesz zmienić np. na 80px */
+    text-align: center; /* wyśrodkowanie tekstu */
+    transition: background-color 0.05s ease, transform 0.05s ease;
+}
+
+.delete-btn-custom:hover {
+    background-color: #d9363e; /* ciemniejszy czerwony po najechaniu */
+}
+
+.delete-btn-custom:active {
+    transform: scale(0.90);
+}
+
+.adding-to-cart-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(67, 97, 238, 0.95);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  z-index: 3000;
+  opacity: 0;
+  animation: fadeInOut 1.5s ease forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+}
+
+.cart-bounce {
+    animation: cartBounceAnim 0.3s ease;
+}
+
+@keyframes cartBounceAnim {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.15); }
+    60% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+
+
     input, select, button {
       width: 100%;
       padding: 14px 20px;
       border: 2px solid #e9ecef;
       border-radius: 12px;
       font-size: 16px;
-      margin-top: 12px;
+      margin-top: 10px;
       background: white;
       transition: all 0.2s;
     }
@@ -328,13 +646,26 @@
       transform: translateY(0);
     }
 
+.week-summary, .week-deduction {
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2); /* cień taki jak koszyk */
+}
+
+.week-summary {
+  background-color: rgba(67, 97, 238, 0.5);
+  border-left: 3px solid var(--primary);
+}
+
+
     .order-summary, .deduction-info {
       margin-top: 20px;
       padding: 16px;
       border-radius: 12px;
       font-weight: 600;
       text-align: center;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .order-summary {
@@ -490,7 +821,7 @@
   padding: 10px;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
 }
 
 .order-item {
@@ -555,6 +886,10 @@
   background: linear-gradient(to right, transparent, var(--gray), transparent);
   margin: 15px 0;
   border: none;
+}
+
+.hidden {
+  display: none !important;
 }
 
 
@@ -655,11 +990,12 @@
 
   <div id="content-wrapper">
     <div id="login-section" class="fade-in">
-      <h2>Logowanie do systemu cateringowego</h2>
-      <input id="login" placeholder="Login - Numer RCP" class="slide-in" style="animation-delay: 0.2s" />
-      <input id="password" type="password" placeholder="Hasło - 4 ostatnie cyfry PESEL" class="slide-in" style="animation-delay: 0.3s" />
-      <button onclick="login()" class="ripple slide-in" style="animation-delay: 0.4s">Zaloguj</button>
+      <h3>Logowanie do systemu cateringowego</h3>
       <div id="loginMessage" style="margin-top: 20px; color: #BA0436; font-weight: bold; font-size: 1.2rem"></div>
+      <input id="login" placeholder="Login - Numer RCP" class="slide-in" style="animation-delay: 1.0s" />
+      <input id="password" type="password" placeholder="Hasło - 4 ostatnie cyfry PESEL" class="slide-in" style="animation-delay: 1.2s" />
+      <button onclick="login()" class="ripple slide-in" style="animation-delay: 1.5s">Zaloguj</button>
+      
 	</form>
     </div>
 
@@ -679,20 +1015,24 @@
         </button>
       </div>
 
-      <h3>Formularz zamówienia</h3>
-      <label for="order-week">Tydzień:</label>
-      <input type="week" id="order-week" required class="slide-in" />
-      <div id="week-calendar" style="display: none; margin-top: 15px;"></div>
+      <h3>Formularz zamówienia</h3> <p id="current-week-display" style="font-weight: bold; color: #3f37c9; font-size: 18px; text-align: center;"></p>
+
+      <label for="order-week">Dni tygodnia:</label>
+
+      <input type="hidden" id="order-week" value="">
+
+      <div id="week-calendar" style="display: none; margin-top: 5px;"></div>
 
       <label for="delivery-location">Miejsce dostawy:</label>
       <select id="delivery-location" required class="slide-in">
         <option value="" disabled selected>Wybierz miejsce dostawy</option>
-        <option value="H7">H7</option>
-        <option value="H5">H5</option>
-        <option value="H4">H4</option>
-        <option value="H3">H3</option>
+        <option value="BESTEM-H7">BESTEM-H7</option>
+        <option value="BESTEM-H5">BESTEM-H5</option>
+        <option value="BESTEM-H4">BESTEM-H4</option>
+        <option value="BESTEM-H3">BESTEM-H3</option>
+        <option value="BESTEM-BIURO">BESTEM-BIURO</option>
         <option value="PMTM">PMTM</option>
-        <option value="BIURO">BIURO</option>
+	<option value="PPHU">PPHU</option>
       </select>
 
 	<label for="shift">Zmiana:</label>
@@ -703,20 +1043,44 @@
 	  <option value="Zmiana 3">Zmiana 3</option>
 	</select>
 
-<div class="order-preview" id="order-preview">Suma zamówienia: 0.00 zł</div>
+<div id="menu-container"></div>
 
 
-      <div id="menu-container"></div>
-      <button onclick="submitOrder()" class="ripple"> 
-	<span style="font-size: 1.7em; margin-right: 8px;"> 🍽️ </span> Złóż zamówienie
-	</button>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; margin-bottom: 18px; padding-top: 5px;">
+
+    <h3 style="margin: 0;">Koszyk zamówień</h3>
+    
+    <div id="cart-summary-text" style="font-size: 16px; font-weight: 600; color: #3f37c9;">
+        Aktualne zamówienie wynosi obecnie: <span id="cart-total-price">0.00</span> zł
+    </div>
+</div>
+
+<div id="order-cart">
+  <div id="cart-content">Koszyk jest pusty</div>
+</div>
+
+<div style="display: flex; gap: 10px; margin-top: 20px;">
+    <button id="summary-btn" class="ripple" onclick="showOrderSummary()" disabled>
+        <span style="font-size: 1.7em; margin-right: 5px;"> 📝 </span> Podsumowanie zamówienia
+    </button>
+    <button id="submit-cart-btn" class="ripple hidden" onclick="submitCartOrder()" style="display: none;">
+    <span style="font-size: 1.7em; margin-right: 8px;"> 🍽️ </span> Złóż zamówienie
+</button>
+</div>
+
+
+
+
+
+
+      
 
       <div class="order-summary" id="order-summary">Suma dotychczasowych zamówień: 0.00 zł</div>
-      <div class="deduction-info" id="deduction-info"></div>
+      <div class="deduction-info" id="deduction-info">
+</div>
         </form>
-	<button id="home-order-btn" onclick="showHomeOrderSection()" class="ripple">
-        <span style="font-size: 1.7em; margin-right: 5px;"> 🏠 </span> Zamawiam do domu</button>
-      <h3>Historia zamówień</h3>
+
+      <h3>💾</h3>
       <button id="toggle-history" onclick="toggleHistory()" class="ripple">
 	<span style="font-size: 1.7em; margin-right: 5px;"> 📖 </span> Pokaż historię zamówień</button>
 
@@ -727,28 +1091,46 @@
    </div>
   </div>
 
-<div id="home-order-section" style="display:none;">
-  <div class="panel-header">
-    <h2>Zamówienia domowe</h2>
-    <button class="back-btn ripple" onclick="hideHomeOrderSection()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
-      </svg>
-      Powrót
-    </button>
-  </div>
+<div id="content-wrapper">
 
-  <div id="home-order-preview" class="order-preview">Suma zamówienia domowego: 0.00 zł</div>
-  <div id="home-menu-container"></div>
-  <button onclick="submitHomeOrder()" class="ripple">
-	<span style="font-size: 1.7em; margin-right: 8px;"> 🍽️ </span> Złóż zamówienie domowe
+<div id="order-summary-section" style="display:none;">
+<div class="panel-header">
+    <h2>Podsumowanie zamówienia</h2>
+    <div class="header-buttons">
+        <button class="back-btn ripple" onclick="hideOrderSummary()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+            </svg>
+            Wróć
+        </button>
+        <button class="logout-btn ripple" onclick="logout()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+            </svg>
+            Wyloguj
+        </button>
+    </div>
+</div>
+        
+        <h3> ______________________________________ </h3>
+        <div id="summary-details" style="margin-bottom: 20px;">
+
+            <p><strong>Tydzień:</strong> <span id="summary-week"></span></p>
+            <p><strong>Miejsce dostawy:</strong> <span id="summary-location"></span></p>
+            <p><strong>Zmiana:</strong> <span id="summary-shift"></span></p>
+        </div>
+        
+        <h3>  </h3>
+        <div id="summary-cart" class="order-preview"></div>
+        
+        <button id="submit-order-btn" class="ripple" onclick="submitCartOrder()"> 
+  	<span style="font-size: 1.7em; margin-right: 8px;"> 🍽️ </span> Złóż zamówienie
 	</button>
-  
-  <h3>Historia zamówień domowych</h3>
-  <div id="home-order-history"></div>
+    </div>
 </div>
 
-  <div class="copyright">supported by aim4, all right reserved 04/2025r.</div>
+<div class="copyright">supported by aim4, all right reserved 04/2025r.</div>
 
 <script src="user.js" defer></script>
 </body>

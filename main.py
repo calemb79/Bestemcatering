@@ -21,6 +21,10 @@ from docx import Document
 from docx.shared import Pt
 from fastapi import Query
 from typing import Optional
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    Meal
 
 
 app = FastAPI()
@@ -46,11 +50,16 @@ app.add_middleware(
 
 # MongoDB
 client = MongoClient("mongodb+srv://Maciej:20250504@cateringAtlas.ivdqqew.mongodb.net/catering_app?retryWrites=true&w=majority")
+#client = MongoClient("mongodb://localhost:27017/")
+#client = MongoClient("mongodb+srv://Maciej:20250504@Bestem.4xyziqf.mongodb.net/catering?retryWrites=true&w=majority")
 db = client["catering_app"]
+#db = client["catering"]
 users_collection = db["users"]
 orders_collection = db["orders"]
 menu_collection = db["menu"]
 messages_collection = db["messages"]
+settings_collection = db["settings"]
+
 
 # MODELE
 class LoginUser(BaseModel):
@@ -63,10 +72,15 @@ class Meal(BaseModel):
 
 class WeeklyOrder(BaseModel):
     username: str
-    meals: Dict[str, List[Meal]]  # Klucz to dzieĹ„ tygodnia, wartoĹ›Ä‡ to lista obiektĂłw Meal
+    meals: Dict[str, List["Meal"]]  # Klucz to dzieĹ„ tygodnia, wartoĹ›Ä‡ to lista obiektĂłw Meal
     week: str
     date_range: str
     shift: str
+
+class WeekPayload(BaseModel):
+    week: str
+    admin_username: str
+
 
 class MenuItem(BaseModel):
     name: str
@@ -165,6 +179,26 @@ def add_user(payload: NewUserPayload):
     })
     return {"msg": f"użytkownik {payload.username} dodany jako {payload.role}"}
 
+@app.post("/admin/set_week")
+def set_active_week(payload: WeekPayload):
+    admin = users_collection.find_one({"username": payload.admin_username})
+    if not admin or admin["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Brak uprawnień")
+
+    settings_collection.update_one(
+        {"_id": "active_week"},
+        {"$set": {"week": payload.week}},
+        upsert=True
+    )
+    return {"msg": f"Aktywny tydzień ustawiony na {payload.week}"}
+
+@app.get("/current_week")
+def get_active_week():
+    setting = settings_collection.find_one({"_id": "active_week"})
+    if not setting or "week" not in setting:
+        raise HTTPException(status_code=404, detail="Tydzień nie został jeszcze ustawiony przez administratora")
+    return {"week": setting["week"]}
+
 
 @app.post("/menu")
 def add_menu_item(payload: MenuPayload):
@@ -218,7 +252,7 @@ def create_weekly_order(order: WeeklyOrder):
     if not user:
         raise HTTPException(status_code=400, detail="Użytkownik nie istnieje")
 
-    # Zamówienie do zapisania
+    # ZamĂłwienie do zapisania
     order_data = order.dict()
     meals_data = []
     for day, meal_list in order.meals.items():
@@ -232,7 +266,7 @@ def create_weekly_order(order: WeeklyOrder):
     orders_collection.insert_one({
         "username": order.username,
         "meals": meals_data,
-        "week": order.week,
+        "week": settings_collection.find_one({"_id": "active_week"}).get("week", "Nie ustawiono"),
         "date_range": order.date_range,
         "shift": order.shift,  # Dodane pole zmiany
         "timestamp": datetime.utcnow()
@@ -303,7 +337,7 @@ def update_role(username: str, new_role: str, admin_username: str):
         raise HTTPException(status_code=404, detail="Użytkownik nie istnieje")
 
     if new_role not in ["user", "admin"]:
-        raise HTTPException(status_code=400, detail="Nieprawidłoowa rola")
+        raise HTTPException(status_code=400, detail="Nieprawidłowa rola")
 
     users_collection.update_one({"username": username}, {"$set": {"role": new_role}})
 
@@ -348,6 +382,8 @@ def export_orders_excel(admin_username: str):
                 meals_with_descriptions_by_day[day].append(meal_with_description)
                 prices_by_day[day] += float(meal['price'])
 
+        total_sum = sum(prices_by_day.values())
+
         # Przygotuj wiersz danych
         row = {
             "ID zamówienia": str(order["_id"]),
@@ -358,7 +394,7 @@ def export_orders_excel(admin_username: str):
             "Tydzień": order["week"],
             "Data zamówienia": order.get("timestamp", "").strftime("%Y-%m-%d %H:%M:%S") if order.get(
                 "timestamp") else "",
-
+            "Suma zamówienia": total_sum
         }
 
         # Dodaj kolumny dla każdego dnia (dania z opisami i ceny)
@@ -759,6 +795,7 @@ def export_orders_word_mailmerge(admin_username: str):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers=headers
     )
+
 @app.get("/order/exists")
 def order_exists(username: str = Query(...), week: str = Query(...)):
     existing_order = orders_collection.find_one({"username": username, "week": week})
@@ -885,3 +922,4 @@ def update_user(payload: UpdateUserPayload):
         )
 
     return {"msg": f"Dane użytkownika {payload.old_username} zostały zaktualizowane"}
+
